@@ -8,7 +8,7 @@ Features:
 - Question bank import/export (CSV/JSON)
 - PBQ support and quizzes
 - Progress tracking per domain stored in local SQLite
-Run: python SecurityPlus_Study_App.py
+Run: python security_app.py
 """
 import sys
 import sqlite3
@@ -354,7 +354,7 @@ class MainWindow(QMainWindow):
         self.fc_list.clear()
         for r in due_flashcards():
             display = f"[{r['domain']}] {r['question'][:120]}"
-            # r may not include 'id' key if fetched as sqlite row; use r['id']
+            # 'id' is always present from the questions table in the query result
             self.fc_list.addItem(f"{r['id']}: {display}")
 
     def show_flashcard(self, idx):
@@ -515,7 +515,11 @@ class MainWindow(QMainWindow):
             user = ans.strip()
             correct = False
             if q['answer'] and user:
-                correct = q['answer'].lower() in user.lower() or user.lower() in q['answer'].lower()
+                # Use strict equality for answer checking
+                correct = user.lower() == q['answer'].lower()
+                # Optionally, for fuzzy matching, you could use difflib:
+                # import difflib
+                # correct = difflib.SequenceMatcher(None, user.lower(), q['answer'].lower()).ratio() > 0.85
             else:
                 resp = QMessageBox.question(self, "Self grade", "Did you answer correctly?", QMessageBox.Yes | QMessageBox.No)
                 correct = (resp == QMessageBox.Yes)
@@ -544,6 +548,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(btn_json)
 
         layout.addWidget(QLabel("CSV format: header row with columns domain,question,answer,type"))
+        layout.addWidget(QLabel("JSON format: list of objects with keys domain,question,answer,type"))
         self.tabs.addTab(w, "Import")
 
     def on_import_csv(self):
@@ -594,12 +599,13 @@ class MainWindow(QMainWindow):
                 "answer": q["answer"],
                 "type": q["qtype"]
             })
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(out, f, indent=2)
-        QMessageBox.information(self, "Exported", "Questions exported")
-
     def reset_db(self):
-        reply = QMessageBox.question(self, "Are you sure?", "This will delete ALL questions and progress. Continue?", QMessageBox.Yes | QMessageBox.No)
+        reply = QMessageBox.question(
+            self,
+            "Are you sure?",
+            "This will delete ALL questions, flashcards, attempts, and progress. Continue?",
+            QMessageBox.Yes | QMessageBox.No
+        )
         if reply == QMessageBox.Yes:
             conn = get_conn()
             c = conn.cursor()
@@ -611,8 +617,12 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Reset", "Database reset")
             self.reload_domains()
             self.load_stats()
-
 if __name__ == "__main__":
+    init_db()
+    app = QApplication(sys.argv)
+    win = MainWindow()
+    win.show()
+    sys.exit(app.exec_())
     init_db()
     app = QApplication(sys.argv)
     win = MainWindow()
