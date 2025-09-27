@@ -1,0 +1,42 @@
+[
+    {
+        "question": "Which protocol is used to securely transfer files over a network?",
+        "options": ["FTP", "SFTP", "Telnet", "SMTP"],
+        "answer": "SFTP",
+        "explanation": "SFTP (Secure File Transfer Protocol) uses SSH to securely transfer files."
+    },
+    {
+        "question": "What is the primary purpose of a firewall?",
+        "options": [
+            "To encrypt data",
+            "To prevent unauthorized access",
+            "To scan for viruses",
+            "To monitor network performance"
+        ],
+        "answer": "To prevent unauthorized access",
+        "explanation": "A firewall controls incoming and outgoing network traffic based on security rules."
+    },
+    {
+        "question": "Which type of attack involves intercepting communications between two parties?",
+        "options": ["Phishing", "Man-in-the-middle", "DoS", "Brute force"],
+        "answer": "Man-in-the-middle",
+        "explanation": "A man-in-the-middle attack intercepts and possibly alters communication between two parties."
+    },
+    {
+        "question": "What does the principle of least privilege entail?",
+        "options": [
+            "Giving users all possible permissions",
+            "Restricting user access to only what is necessary",
+            "Allowing guest access to all resources",
+            "Disabling all user accounts"
+        ],
+        "answer": "Restricting user access to only what is necessary",
+        "explanation": "The principle of least privilege limits access rights for users to the bare minimum required."
+    },
+    {
+        "question": "Which of the following is a physical security control?",
+        "options": ["Firewall", "Encryption", "Biometric scanner", "Antivirus software"],
+        "answer": "Biometric scanner",
+        "explanation": "Biometric scanners are physical devices used to control access to secure areas."
+    }
+]
