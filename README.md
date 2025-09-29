@@ -1,6 +1,6 @@
 # Security+ Study App
 
-A desktop application to help you study for the CompTIA Security+ exam. Features flashcards with simplified spaced repetition, a question bank, PBQ support, quizzes, progress tracking, and import/export functionality.
+A desktop application to help you study for the CompTIA Security+ exam. Features flashcards with simplified spaced repetition, a question bank, PBQ support, quizzes, progress tracking, and import/export functionality. The database is created and stored locally in the user's home directory.
 
 ## Installation
 
