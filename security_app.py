@@ -11,7 +11,6 @@ Features:
 Run: python security_app.py
 """
 import sys
-import sqlite3
 import csv
 import json
 import random
