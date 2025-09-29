@@ -25,6 +25,11 @@ from PySide6.QtWidgets import (
     QInputDialog
 )
 from PySide6.QtCore import Qt
+from app_core import (
+    init_db, get_conn, add_question, import_csv, import_json,
+    list_domains, get_questions, record_attempt, stats_per_domain,
+    schedule_update, due_flashcards, DB_PATH
+)
 
 # Optional: progress chart
 try:
@@ -36,72 +41,11 @@ try:
 except Exception:
     MATPLOTLIB_AVAILABLE = False
 
-APP_DIR = Path.home() / ".security_plus_study_app"
-APP_DIR.mkdir(parents=True, exist_ok=True)
-DB_PATH = APP_DIR / "study.db"
+# DB location is managed by app_core
 
 # --- Database helpers ---
-def get_conn():
-    conn = sqlite3.connect(str(DB_PATH))
-    conn.row_factory = sqlite3.Row
-    return conn
 
-def init_db():
-    conn = get_conn()
-    c = conn.cursor()
-    # questions table
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS questions (
-            id INTEGER PRIMARY KEY,
-            domain TEXT NOT NULL,
-            question TEXT NOT NULL,
-            answer TEXT,
-            qtype TEXT DEFAULT 'free',
-            metadata TEXT
-        )
-        """
-    )
-    # attempts table
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS attempts (
-            id INTEGER PRIMARY KEY,
-            question_id INTEGER,
-            correct INTEGER,
-            timestamp TEXT,
-            FOREIGN KEY(question_id) REFERENCES questions(id)
-        )
-        """
-    )
-    # flashcards table
-    c.execute(
-        """
-        CREATE TABLE IF NOT EXISTS flashcards (
-            id INTEGER PRIMARY KEY,
-            question_id INTEGER UNIQUE,
-            interval INTEGER DEFAULT 1,
-            ease REAL DEFAULT 2.5,
-            next_review TEXT,
-            FOREIGN KEY(question_id) REFERENCES questions(id)
-        )
-        """
-    )
-    conn.commit()
-    conn.close()
-
-# --- Core logic ---
-def add_question(domain, question, answer, qtype='free', metadata=None):
-    conn = get_conn()
-    c = conn.cursor()
-    c.execute(
-        "INSERT INTO questions (domain,question,answer,qtype,metadata) VALUES (?,?,?,?,?)",
-        (domain, question, answer, qtype, json.dumps(metadata) if metadata else None)
-    )
-    qid = c.lastrowid
-    conn.commit()
-    conn.close()
-    return qid
+# init_db is provided by app_core
 
 def import_csv(path):
     added = 0
@@ -599,6 +543,12 @@ class MainWindow(QMainWindow):
                 "answer": q["answer"],
                 "type": q["qtype"]
             })
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(out, f, ensure_ascii=False, indent=2)
+            QMessageBox.information(self, "Exported", f"Exported {len(out)} questions to {path}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to export: {e}")
     def reset_db(self):
         reply = QMessageBox.question(
             self,
@@ -617,14 +567,16 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Reset", "Database reset")
             self.reload_domains()
             self.load_stats()
-if __name__ == "__main__":
-    init_db()
-    app = QApplication(sys.argv)
-    win = MainWindow()
-    win.show()
-    sys.exit(app.exec_())
+def main():
     init_db()
     app = QApplication(sys.argv)
     win = MainWindow()
     win.show()
     sys.exit(app.exec())
+
+
+if __name__ == "__main__":
+    main()
+if __name__ == "__main__":
+
+    main()
