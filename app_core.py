@@ -90,6 +90,25 @@ def add_question(domain, question, answer, qtype='free', metadata=None):
     conn.close()
     return qid
 
+
+def _ensure_flashcard_for(question_id):
+    """Create a flashcards row for question_id if one does not exist.
+    New flashcards are scheduled for today so they appear in the due list.
+    """
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("SELECT id FROM flashcards WHERE question_id=?", (question_id,))
+    if not c.fetchone():
+        interval = 1
+        ease = 2.5
+        next_review = (datetime.date.today()).isoformat()
+        c.execute(
+            "INSERT INTO flashcards (question_id,interval,ease,next_review) VALUES (?,?,?,?)",
+            (question_id, interval, ease, next_review)
+        )
+        conn.commit()
+    conn.close()
+
 # Import questions from CSV or JSON file
 def import_csv(path):
     added = 0
@@ -101,7 +120,12 @@ def import_csv(path):
             a = row.get('answer') or row.get('Answer') or ''
             t = row.get('type') or row.get('Type') or 'free'
             if q:
-                add_question(domain, q, a, t, None)
+                qid = add_question(domain, q, a, t, None)
+                try:
+                    _ensure_flashcard_for(qid)
+                except Exception:
+                    # non-fatal: flashcard creation failure shouldn't stop import
+                    pass
                 added += 1
     return added
 
@@ -115,7 +139,11 @@ def import_json(path):
             a = item.get('answer', '')
             t = item.get('type', 'free')
             if q:
-                add_question(domain, q, a, t, item.get('metadata'))
+                qid = add_question(domain, q, a, t, item.get('metadata'))
+                try:
+                    _ensure_flashcard_for(qid)
+                except Exception:
+                    pass
                 added += 1
     return added
 
