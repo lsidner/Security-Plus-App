@@ -1,12 +1,14 @@
 [
     {
         "question": "Which protocol is used to securely transfer files over a network?",
+        "domain": "Network Security",
         "options": ["FTP", "SFTP", "Telnet", "SMTP"],
         "answer": "SFTP",
         "explanation": "SFTP (Secure File Transfer Protocol) uses SSH to securely transfer files."
     },
     {
         "question": "What is the primary purpose of a firewall?",
+        "domain": "Network Security",
         "options": [
             "To encrypt data",
             "To prevent unauthorized access",
@@ -18,12 +20,14 @@
     },
     {
         "question": "Which type of attack involves intercepting communications between two parties?",
+        "domain": "Network Security",
         "options": ["Phishing", "Man-in-the-middle", "DoS", "Brute force"],
         "answer": "Man-in-the-middle",
         "explanation": "A man-in-the-middle attack intercepts and possibly alters communication between two parties."
     },
     {
         "question": "What does the principle of least privilege entail?",
+        "domain": "Access Control",
         "options": [
             "Giving users all possible permissions",
             "Restricting user access to only what is necessary",
@@ -38,5 +42,55 @@
         "options": ["Firewall", "Encryption", "Biometric scanner", "Antivirus software"],
         "answer": "Biometric scanner",
         "explanation": "Biometric scanners are physical devices used to control access to secure areas."
+    },
+    {
+        "question": "What is the main purpose of encryption?",
+        "options": [
+            "To compress data",
+            "To protect data confidentiality",
+            "To speed up data transmission",
+            "To create backups"
+        ],
+        "answer": "To protect data confidentiality",
+        "explanation": "Encryption transforms data into a secure format that can only be read by someone with the correct decryption key."
+    },
+    {
+        "question": "Which of the following is a common method for authenticating users?",
+        "options": ["Password", "Firewall", "VPN", "Proxy server"],
+        "answer": "Password",
+        "explanation": "Passwords are a common method for verifying a user's identity."
+    },
+    {
+        "question": "What does VPN stand for?",
+        "options": [
+            "Virtual Private Network",
+            "Variable Protocol Network",
+            "Verified Public Network",
+            "Virtual Public Network"
+        ],
+        "answer": "Virtual Private Network",
+        "explanation": "A VPN creates a secure connection over the internet, allowing users to access resources as if they were on a private network."
+    },
+    {
+        "question": "Which of the following is an example of multi-factor authentication?",
+        "options": [
+            "Username and password",
+            "Password and security question",
+            "Password and fingerprint scan",
+            "Username and email address"
+        ],
+        "answer": "Password and fingerprint scan",
+        "explanation": "Multi-factor authentication requires two or more verification methods, such as something you know (password) and something you have (fingerprint)."
+    },
+    {
+        "question": "What is the purpose of a penetration test?",
+        "options": [
+            "To identify vulnerabilities in a system",
+            "To create new software features",
+            "To monitor network traffic",
+            "To manage user accounts"
+        ],
+        "answer": "To identify vulnerabilities in a system",
+        "explanation": "A penetration test simulates an attack on a system to find security weaknesses before attackers can exploit them."
     }
 ]
