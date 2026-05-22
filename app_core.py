@@ -138,8 +138,18 @@ def import_json(path):
             q = item.get('question')
             a = item.get('answer', '')
             t = item.get('type', 'free')
+            metadata = item.get('metadata')
+            
+            # If options are provided, this is an MCQ
+            if 'options' in item and not metadata:
+                t = 'MCQ'
+                metadata = {'options': item.get('options', [])}
+            elif 'options' in item and metadata:
+                t = 'MCQ'
+                metadata['options'] = item.get('options', [])
+            
             if q:
-                qid = add_question(domain, q, a, t, item.get('metadata'))
+                qid = add_question(domain, q, a, t, metadata)
                 try:
                     _ensure_flashcard_for(qid)
                 except Exception:
