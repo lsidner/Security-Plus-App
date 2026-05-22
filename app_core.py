@@ -119,8 +119,21 @@ def import_csv(path):
             q = row.get('question') or row.get('Question')
             a = row.get('answer') or row.get('Answer') or ''
             t = row.get('type') or row.get('Type') or 'free'
+            
+            # Check for MCQ format (option a, option b, option c, option d)
+            options = []
+            for opt_key in ['option a', 'option b', 'option c', 'option d']:
+                opt_val = row.get(opt_key) or row.get(opt_key.upper())
+                if opt_val:
+                    options.append(opt_val)
+            
+            metadata = None
+            if options:
+                t = 'MCQ'
+                metadata = {'options': options}
+            
             if q:
-                qid = add_question(domain, q, a, t, None)
+                qid = add_question(domain, q, a, t, metadata)
                 try:
                     _ensure_flashcard_for(qid)
                 except Exception:
