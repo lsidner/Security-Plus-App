@@ -1,12 +1,14 @@
 [
     {
         "question": "Which protocol is used to securely transfer files over a network?",
+        "domain": "Network Security",
         "options": ["FTP", "SFTP", "Telnet", "SMTP"],
         "answer": "SFTP",
         "explanation": "SFTP (Secure File Transfer Protocol) uses SSH to securely transfer files."
     },
     {
         "question": "What is the primary purpose of a firewall?",
+        "domain": "Network Security",
         "options": [
             "To encrypt data",
             "To prevent unauthorized access",
@@ -18,12 +20,14 @@
     },
     {
         "question": "Which type of attack involves intercepting communications between two parties?",
+        "domain": "Network Security",
         "options": ["Phishing", "Man-in-the-middle", "DoS", "Brute force"],
         "answer": "Man-in-the-middle",
         "explanation": "A man-in-the-middle attack intercepts and possibly alters communication between two parties."
     },
     {
         "question": "What does the principle of least privilege entail?",
+        "domain": "Access Control",
         "options": [
             "Giving users all possible permissions",
             "Restricting user access to only what is necessary",

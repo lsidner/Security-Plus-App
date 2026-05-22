@@ -402,15 +402,16 @@ class MainWindow(QMainWindow):
         layout.addWidget(btn_json)
         layout.addWidget(QLabel(
             "CSV format:<br>"
-            "<pre>domain,question,answer,type\nDomain 1,What is X?,Answer X,MCQ</pre>"
+            "<pre>domain,question,option a,option b,option c,option d,answer,explanation\nDomain 1,What is X?,Option A,Option B,Option C,Option D,Answer X,Explanation X</pre>"
         ))
         layout.addWidget(QLabel(
             "JSON format:<br>"
-            "<pre>[{\"domain\": \"Domain 1\", \"question\": \"What is X?\", \"answer\": \"Answer X\", \"type\": \"MCQ\"}]</pre>"
+            "<pre>[{\"domain\": \"Domain 1\", \"question\": \"What is X?\", \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"], \"answer\": \"Answer X\", \"explanation\": \"Explanation X\"}]</pre>"
             "<li>domain</li>"
             "<li>question</li>"
+            "<li>options (for MCQs, optional for free form)</li>" \
             "<li>answer</li>"
-            "<li>type</li>"
+            "<li>explanation</li>"
             "</ul>"
         ))
         self.tabs.addTab(w, "Import")
