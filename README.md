@@ -1,6 +1,6 @@
 # Security+ Study App
 
-A desktop application to help you study for the CompTIA Security+ exam. Features flashcards with simplified spaced repetition, a question bank, PBQ support, quizzes, progress tracking, and import/export functionality. The database is created and stored locally in the user's home directory.
+A desktop application to help you study for the CompTIA Security+ exam. Features flashcards with simplified spaced repetition, a question bank, PBQ support, quizzes, progress tracking, and import/export functionality. The database is created and stored locally in the user's home directory (C:\Users\username\\.security_plus_study_app).
 
 ## Installation
 
@@ -10,6 +10,9 @@ A desktop application to help you study for the CompTIA Security+ exam. Features
    pip install PySide6 matplotlib
    ```
 3. **Clone or download this repository**.
+   ```sh
+   git clone https://github.com/lnsydnr/Security-Plus-App
+   ```
 
 ## Usage
 

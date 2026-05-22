@@ -146,7 +146,8 @@ class MainWindow(QMainWindow):
         grades_layout = QHBoxLayout()
         for label, score in [("Again", 0), ("Hard", 3), ("Good", 4), ("Easy", 5)]:
             btn = QPushButton(label)
-            btn.clicked.connect(lambda checked, sc=score: self.grade_card(sc))
+            # accept and ignore any args the signal may send (e.g. checked)
+            btn.clicked.connect(lambda *_, sc=score: self.grade_card(sc))
             grades_layout.addWidget(btn)
         right.addLayout(grades_layout)
 
@@ -341,6 +342,7 @@ class MainWindow(QMainWindow):
             return
 
     def import_tab(self):
+        """Tab for importing questions from CSV or JSON files."""
         w = QWidget()
         layout = QVBoxLayout()
         w.setLayout(layout)
@@ -354,9 +356,19 @@ class MainWindow(QMainWindow):
         btn_json = QPushButton("Import JSON...")
         btn_json.clicked.connect(self.on_import_json)
         layout.addWidget(btn_json)
-
-        layout.addWidget(QLabel("CSV format: header row with columns domain,question,answer,type"))
-        layout.addWidget(QLabel("JSON format: list of objects with keys domain,question,answer,type"))
+        layout.addWidget(QLabel(
+            "CSV format:<br>"
+            "<pre>domain,question,answer,type\nDomain 1,What is X?,Answer X,MCQ</pre>"
+        ))
+        layout.addWidget(QLabel(
+            "JSON format:<br>"
+            "<pre>[{\"domain\": \"Domain 1\", \"question\": \"What is X?\", \"answer\": \"Answer X\", \"type\": \"MCQ\"}]</pre>"
+            "<li>domain</li>"
+            "<li>question</li>"
+            "<li>answer</li>"
+            "<li>type</li>"
+            "</ul>"
+        ))
         self.tabs.addTab(w, "Import")
 
     def on_import_csv(self):
@@ -367,6 +379,11 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Imported", f"Imported {added} questions")
         self.reload_domains()
         self.load_stats()
+        # Refresh flashcards list in case imports created new flashcards
+        try:
+            self.load_due_flashcards()
+        except Exception:
+            pass
 
     def on_import_json(self):
         path, _ = QFileDialog.getOpenFileName(self, "Open JSON", str(Path.home()), "JSON files (*.json)")
@@ -376,6 +393,11 @@ class MainWindow(QMainWindow):
         QMessageBox.information(self, "Imported", f"Imported {added} questions")
         self.reload_domains()
         self.load_stats()
+        # Refresh flashcards list in case imports created new flashcards
+        try:
+            self.load_due_flashcards()
+        except Exception:
+            pass
 
     def settings_tab(self):
         w = QWidget()
@@ -434,3 +456,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Reset", "Database reset")
             self.reload_domains()
             self.load_stats()
+            try:
+                self.load_due_flashcards()
+            except Exception:
+                pass
