@@ -10,6 +10,9 @@ A desktop application to help you study for the CompTIA Security+ exam. Features
    pip install PySide6 matplotlib
    ```
 3. **Clone or download this repository**.
+   ```sh
+   git clone https://github.com/lnsydnr/Security-Plus-App
+   ```
 
 ## Usage
 
