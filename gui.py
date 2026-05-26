@@ -7,7 +7,7 @@ import random
 from pathlib import Path
 
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QTextOption
 from PySide6.QtWidgets import (
     QWidget, QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QListWidget, QTextEdit, QLineEdit, QFileDialog, QMessageBox,
@@ -37,7 +37,7 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Security+ Study App")
-        self.resize(1000, 700)
+        self.setFixedSize(1000, 700)
 
         icon_path = Path(__file__).with_name("app_icon.png")
         if not icon_path.exists():
@@ -310,6 +310,7 @@ class MainWindow(QMainWindow):
         self.quiz_area = QTextEdit()
         self.quiz_area.setReadOnly(True)
         self.quiz_area.setLineWrapMode(QTextEdit.WidgetWidth)
+        self.quiz_area.setWordWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
         self.quiz_area.setFixedHeight(180)
         layout.addWidget(self.quiz_area)
 
