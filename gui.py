@@ -7,6 +7,7 @@ import random
 from pathlib import Path
 
 from PySide6.QtCore import Qt
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
     QWidget, QMainWindow, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QListWidget, QTextEdit, QLineEdit, QFileDialog, QMessageBox,
@@ -37,6 +38,13 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle("Security+ Study App")
         self.resize(1000, 700)
+
+        icon_path = Path(__file__).with_name("app_icon.png")
+        if not icon_path.exists():
+            icon_path = Path(__file__).with_name("app_icon.ico")
+        if icon_path.exists():
+            self.setWindowIcon(QIcon(str(icon_path)))
+
         self.tabs = QTabWidget()
         self.setCentralWidget(self.tabs)
 
@@ -132,10 +140,12 @@ class MainWindow(QMainWindow):
         right.addWidget(QLabel("<h3>Card</h3>"))
         self.card_q = QTextEdit()
         self.card_q.setReadOnly(True)
+        self.card_q.setLineWrapMode(QTextEdit.WidgetWidth)
         right.addWidget(self.card_q)
 
         self.card_a = QTextEdit()
         self.card_a.setReadOnly(True)
+        self.card_a.setLineWrapMode(QTextEdit.WidgetWidth)
         self.card_a.hide()
         right.addWidget(self.card_a)
 
@@ -218,9 +228,11 @@ class MainWindow(QMainWindow):
         right.addWidget(QLabel("<h3>Question</h3>"))
         self.bank_q = QTextEdit()
         self.bank_q.setReadOnly(True)
+        self.bank_q.setLineWrapMode(QTextEdit.WidgetWidth)
         right.addWidget(self.bank_q)
         self.bank_a = QTextEdit()
         self.bank_a.setReadOnly(True)
+        self.bank_a.setLineWrapMode(QTextEdit.WidgetWidth)
         right.addWidget(self.bank_a)
 
         del_btn = QPushButton("Delete Question")
@@ -295,7 +307,10 @@ class MainWindow(QMainWindow):
         start.clicked.connect(self.start_quiz)
         layout.addWidget(start)
 
-        self.quiz_area = QListWidget()
+        self.quiz_area = QTextEdit()
+        self.quiz_area.setReadOnly(True)
+        self.quiz_area.setLineWrapMode(QTextEdit.WidgetWidth)
+        self.quiz_area.setFixedHeight(180)
         layout.addWidget(self.quiz_area)
 
         self.tabs.addTab(w, "Quiz")
@@ -320,7 +335,7 @@ class MainWindow(QMainWindow):
             return
         q = self.quiz_questions[self.quiz_index]
         self.current_quiz_qid = q['id']
-        self.quiz_area.addItem(f"Q{self.quiz_index+1}: {q['question']}")
+        self.quiz_area.setPlainText(f"Q{self.quiz_index+1}: {q['question']}")
         
         # Check if MCQ (multiple choice)
         qtype = q['qtype'] if 'qtype' in q.keys() else 'free'
