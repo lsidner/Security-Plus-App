@@ -314,70 +314,61 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(self.quiz_config_widget)
 
-        # Quiz display section (initially hidden) with scroll area
+        # Quiz display section (initially hidden)
         self.quiz_display_widget = QWidget()
         quiz_display_layout = QVBoxLayout()
+        quiz_display_layout.setSpacing(10)
+        quiz_display_layout.setContentsMargins(10, 10, 10, 10)
         self.quiz_display_widget.setLayout(quiz_display_layout)
-        self.quiz_display_widget.hide()
         
-        # Create scroll area for quiz content
-        scroll = QScrollArea()
-        scroll.setWidgetResizable(True)
-        scroll_content = QWidget()
-        scroll_layout = QVBoxLayout()
-        scroll_content.setLayout(scroll_layout)
-        
-        # Question display
+        # Progress label
         self.quiz_progress_label = QLabel()
-        scroll_layout.addWidget(self.quiz_progress_label)
+        quiz_display_layout.addWidget(self.quiz_progress_label)
         
-        scroll_layout.addWidget(QLabel("<b>Question:</b>"))
+        # Question
+        quiz_display_layout.addWidget(QLabel("<b>Question:</b>"))
         self.quiz_question = QTextEdit()
         self.quiz_question.setReadOnly(True)
         self.quiz_question.setLineWrapMode(QTextEdit.WidgetWidth)
-        self.quiz_question.setMaximumHeight(120)
-        scroll_layout.addWidget(self.quiz_question)
+        self.quiz_question.setMaximumHeight(100)
+        quiz_display_layout.addWidget(self.quiz_question)
         
-        # Answer input section
-        scroll_layout.addWidget(QLabel("<b>Choose your answer:</b>"))
+        # Answer options/input
+        quiz_display_layout.addWidget(QLabel("<b>Your Answer:</b>"))
         self.quiz_options_widget = QWidget()
-        options_layout = QVBoxLayout()
-        self.quiz_options_widget.setLayout(options_layout)
-        self.quiz_options_layout = options_layout
-        scroll_layout.addWidget(self.quiz_options_widget)
+        self.quiz_options_layout = QVBoxLayout()
+        self.quiz_options_layout.setSpacing(8)
+        self.quiz_options_layout.setContentsMargins(0, 0, 0, 0)
+        self.quiz_options_widget.setLayout(self.quiz_options_layout)
+        self.quiz_options_widget.setMinimumHeight(250)
+        quiz_display_layout.addWidget(self.quiz_options_widget)
         
-        # Free form answer input
+        # Input field for free form
         self.quiz_answer_input = QLineEdit()
-        self.quiz_answer_input.setPlaceholderText("Enter your answer here")
-        self.quiz_answer_input.returnPressed.connect(self.submit_quiz_answer)
+        self.quiz_answer_input.setPlaceholderText("Enter your answer")
         
-        scroll_layout.addStretch()
-        scroll.setWidget(scroll_content)
-        quiz_display_layout.addWidget(scroll)
-        
+        quiz_display_layout.addStretch()
+        self.quiz_display_widget.hide()
         layout.addWidget(self.quiz_display_widget)
-        
+
         # Results section (initially hidden)
         self.quiz_results_widget = QWidget()
         results_layout = QVBoxLayout()
         self.quiz_results_widget.setLayout(results_layout)
-        self.quiz_results_widget.hide()
         
         self.results_summary = QLabel()
         results_layout.addWidget(self.results_summary)
         
         self.results_table = QTableWidget(0, 4)
-        self.results_table.setHorizontalHeaderLabels(["Question #", "Correct", "Your Answer", "Explanation"])
+        self.results_table.setHorizontalHeaderLabels(["#", "Correct", "Your Answer", "Explanation"])
         self.results_table.horizontalHeader().setStretchLastSection(True)
         results_layout.addWidget(self.results_table)
         
-        results_button_layout = QHBoxLayout()
-        back_to_quiz_btn = QPushButton("Back to Quiz Config")
-        back_to_quiz_btn.clicked.connect(self.back_to_quiz_config)
-        results_button_layout.addWidget(back_to_quiz_btn)
-        results_button_layout.addStretch()
-        results_layout.addLayout(results_button_layout)
+        back_btn = QPushButton("Back to Quiz Config")
+        back_btn.clicked.connect(self.back_to_quiz_config)
+        results_layout.addWidget(back_btn)
         
+        self.quiz_results_widget.hide()
         layout.addWidget(self.quiz_results_widget)
 
         self.tabs.addTab(w, "Quiz")
@@ -409,136 +400,162 @@ class MainWindow(QMainWindow):
 
     def show_quiz_question(self):
         if self.quiz_index >= len(self.quiz_questions):
-            # Quiz finished, show results
             self.show_quiz_results()
             return
         
         q = self.quiz_questions[self.quiz_index]
-        self.current_quiz_qid = q['id']
         self.current_quiz_question = q
         
-        # Update progress label
         self.quiz_progress_label.setText(f"Question {self.quiz_index + 1} of {len(self.quiz_questions)}")
-        
-        # Display question
         self.quiz_question.setPlainText(q['question'])
         
-        # Clear previous options completely
+        # Clear options layout
         while self.quiz_options_layout.count() > 0:
             item = self.quiz_options_layout.takeAt(0)
-            if item.widget():
+            if item and item.widget():
                 item.widget().deleteLater()
         
-        # Check question type
-        qtype = q.get('qtype', 'free') or 'free'
+        qtype = q['qtype'] if 'qtype' in q.keys() else 'free'
+        qtype = qtype or 'free'
         self.quiz_selected_option = None
+        self.quiz_option_buttons = []
         
         if qtype == 'MCQ':
-            # Parse metadata to get options
             metadata = {}
-            if q.get('metadata'):
+            raw_metadata = q['metadata'] if 'metadata' in q.keys() else None
+            if raw_metadata:
                 try:
-                    metadata = json.loads(q['metadata']) if isinstance(q['metadata'], str) else q['metadata']
+                    metadata = json.loads(raw_metadata) if isinstance(raw_metadata, str) else raw_metadata
                 except Exception:
-                    metadata = {}
+                    pass
             
             options = metadata.get('options', [])
-            if options and len(options) > 0:
-                self.quiz_option_buttons = []
-                
+            if options:
                 # Create buttons for each option
-                for option in options:
-                    btn = QPushButton(option)
+                for opt in options:
+                    btn = QPushButton(opt)
                     btn.setCheckable(True)
-                    btn.setMinimumHeight(40)
-                    btn.setCursor(Qt.PointingHandCursor)
+                    btn.setMinimumHeight(50)
+                    btn.setMaximumWidth(600)
                     btn.setStyleSheet("""
                         QPushButton {
                             text-align: left;
                             padding: 10px;
-                            border: 1px solid #ccc;
-                            border-radius: 4px;
+                            border: 2px solid #ccc;
+                            border-radius: 5px;
                             background-color: white;
+                            color: black;
+                            font-size: 13px;
                         }
                         QPushButton:hover {
-                            background-color: #f0f0f0;
+                            background-color: #e8f4f8;
+                            border: 2px solid #0078d4;
+                        }
+                        QPushButton:pressed {
+                            background-color: #cce5ff;
                         }
                     """)
-                    btn.clicked.connect(lambda checked, opt=option: self.select_option(opt))
+                    btn.clicked.connect(lambda checked, o=opt: self.select_option(o))
                     self.quiz_options_layout.addWidget(btn)
                     self.quiz_option_buttons.append(btn)
                 
-                # Add submit button at bottom of options
-                self.quiz_options_layout.addSpacing(5)
-                submit_btn = QPushButton("Submit Answer")
-                submit_btn.setMinimumHeight(40)
-                submit_btn.setStyleSheet("""
+                # Add submit button
+                self.quiz_options_layout.addSpacing(15)
+                submit = QPushButton("Submit Answer")
+                submit.setMinimumHeight(45)
+                submit.setStyleSheet("""
                     QPushButton {
-                        background-color: #2196F3;
+                        background-color: #0078d4;
                         color: white;
                         font-weight: bold;
-                        border-radius: 4px;
+                        border-radius: 5px;
+                        font-size: 13px;
                     }
                     QPushButton:hover {
-                        background-color: #0b7dda;
+                        background-color: #0063b1;
                     }
                 """)
-                submit_btn.clicked.connect(self.submit_quiz_answer)
-                self.quiz_options_layout.addWidget(submit_btn)
+                submit.clicked.connect(self.submit_quiz_answer)
+                self.quiz_options_layout.addWidget(submit)
             else:
-                # No MCQ options, fall back to text input
+                # No options, use text input
                 self.quiz_options_layout.addWidget(self.quiz_answer_input)
-                submit_btn = QPushButton("Submit Answer")
-                submit_btn.setMinimumHeight(40)
-                submit_btn.clicked.connect(self.submit_quiz_answer)
-                self.quiz_options_layout.addWidget(submit_btn)
+                submit = QPushButton("Submit Answer")
+                submit.setMinimumHeight(45)
+                submit.setStyleSheet("""
+                    QPushButton {
+                        background-color: #0078d4;
+                        color: white;
+                        font-weight: bold;
+                        border-radius: 5px;
+                    }
+                """)
+                submit.clicked.connect(self.submit_quiz_answer)
+                self.quiz_options_layout.addWidget(submit)
         else:
             # Free form question
             self.quiz_options_layout.addWidget(self.quiz_answer_input)
-            submit_btn = QPushButton("Submit Answer")
-            submit_btn.setMinimumHeight(40)
-            submit_btn.clicked.connect(self.submit_quiz_answer)
-            self.quiz_options_layout.addWidget(submit_btn)
+            submit = QPushButton("Submit Answer")
+            submit.setMinimumHeight(45)
+            submit.setStyleSheet("""
+                QPushButton {
+                    background-color: #0078d4;
+                    color: white;
+                    font-weight: bold;
+                    border-radius: 5px;
+                }
+            """)
+            submit.clicked.connect(self.submit_quiz_answer)
+            self.quiz_options_layout.addWidget(submit)
         
         self.quiz_answer_input.clear()
 
     def select_option(self, option):
         """Handle MCQ option selection."""
+        previous_selection = self.quiz_selected_option
         self.quiz_selected_option = option
-        
-        # Update all buttons - uncheck others, highlight selected one
-        if hasattr(self, 'quiz_option_buttons'):
-            for btn in self.quiz_option_buttons:
-                if btn.text() == option:
-                    btn.setChecked(True)
-                    btn.setStyleSheet("""
-                        QPushButton {
-                            background-color: #4CAF50;
-                            color: white;
-                            font-weight: bold;
-                            border: 2px solid #45a049;
-                        }
-                        QPushButton:hover {
-                            background-color: #45a049;
-                        }
-                    """)
-                else:
-                    btn.setChecked(False)
-                    btn.setStyleSheet("""
-                        QPushButton {
-                            background-color: #f0f0f0;
-                            color: black;
-                            border: 1px solid #ccc;
-                        }
-                        QPushButton:hover {
-                            background-color: #e0e0e0;
-                        }
-                    """)
+
+        for btn in self.quiz_option_buttons:
+            if btn.text() == option:
+                btn.setChecked(True)
+                btn.setStyleSheet("""
+                    QPushButton {
+                        text-align: left;
+                        padding: 10px;
+                        border: 3px solid #107c10;
+                        border-radius: 5px;
+                        background-color: #d5f5d5;
+                        font-size: 13px;
+                        font-weight: bold;
+                        color: #107c10;
+                    }
+                    QPushButton:hover {
+                        background-color: #c8f0c8;
+                    }
+                """)
+            elif previous_selection and btn.text() == previous_selection:
+                btn.setChecked(False)
+                btn.setStyleSheet("""
+                    QPushButton {
+                        text-align: left;
+                        padding: 10px;
+                        border: 2px solid #ccc;
+                        border-radius: 5px;
+                        background-color: white;
+                        color: black;
+                        font-size: 13px;
+                    }
+                    QPushButton:hover {
+                        background-color: #e8f4f8;
+                        border: 2px solid #0078d4;
+                    }
+                """)
 
     def submit_quiz_answer(self):
         """Submit the current answer and move to next question."""
         q = self.current_quiz_question
-        qtype = q.get('qtype', 'free') or 'free'
+        qtype = q['qtype'] if 'qtype' in q.keys() else 'free'
+        qtype = qtype or 'free'
         
         # Get user answer
         if qtype == 'MCQ' and self.quiz_selected_option:
@@ -547,104 +564,71 @@ class MainWindow(QMainWindow):
             user_answer = self.quiz_answer_input.text().strip()
         
         if not user_answer:
-            QMessageBox.warning(self, "No Answer", "Please provide an answer before submitting")
+            QMessageBox.warning(self, "No Answer", "Please select or enter an answer")
             return
         
-        # Check correctness - for MCQ, exact match; for free form, case-insensitive
+        # Check if correct
         correct = False
-        if q.get('answer'):
+        answer = q['answer'] if 'answer' in q.keys() else None
+        if answer:
             if qtype == 'MCQ':
-                # For MCQ, do case-sensitive match
-                correct = user_answer == q['answer']
+                correct = user_answer == answer
             else:
-                # For free form, do case-insensitive match
-                correct = user_answer.lower() == q['answer'].lower()
+                correct = user_answer.lower() == answer.lower()
         else:
-            # Self-grade for questions without answers
-            resp = QMessageBox.question(
-                self, "Self Grade", 
-                f"Your answer: {user_answer}\n\nDid you answer correctly?",
-                QMessageBox.Yes | QMessageBox.No
-            )
+            resp = QMessageBox.question(self, "Self Grade", f"Your answer: {user_answer}\n\nCorrect?", QMessageBox.Yes | QMessageBox.No)
             correct = (resp == QMessageBox.Yes)
         
         if correct:
             self.quiz_score += 1
         
-        # Record answer for results
         self.quiz_answers.append({
             'question': q['question'],
-            'answer': q.get('answer', ''),
+            'answer': answer or '',
             'user_answer': user_answer,
             'correct': correct,
-            'metadata': q.get('metadata')
+            'metadata': q['metadata'] if 'metadata' in q.keys() else None
         })
         
-        # Record in database
         record_quiz_answer(self.quiz_id, q['id'], user_answer, correct)
         record_attempt(q['id'], correct)
         
-        # Move to next question
         self.quiz_index += 1
         self.quiz_selected_option = None
         self.show_quiz_question()
 
     def show_quiz_results(self):
-        """Display the quiz results with all answers and highlighting for wrong answers."""
-        # Update quiz score in database
+        """Display quiz results with all answers."""
         update_quiz_score(self.quiz_id, self.quiz_score)
         
-        # Update progress label
-        percentage = (self.quiz_score / len(self.quiz_questions) * 100) if self.quiz_questions else 0
-        self.results_summary.setText(
-            f"<h3>Quiz Complete!</h3>"
-            f"<p><b>Score: {self.quiz_score}/{len(self.quiz_questions)} ({percentage:.1f}%)</b></p>"
-        )
+        pct = (self.quiz_score / len(self.quiz_questions) * 100) if self.quiz_questions else 0
+        self.results_summary.setText(f"<h3>Quiz Complete!</h3><p>Score: {self.quiz_score}/{len(self.quiz_questions)} ({pct:.1f}%)</p>")
         
-        # Populate results table with all answers (wrong ones highlighted)
         self.results_table.setRowCount(0)
-        for i, answer_data in enumerate(self.quiz_answers):
+        for i, ans in enumerate(self.quiz_answers):
             row = self.results_table.rowCount()
             self.results_table.insertRow(row)
             
-            # Question number
             self.results_table.setItem(row, 0, QTableWidgetItem(str(i + 1)))
+            self.results_table.setItem(row, 1, QTableWidgetItem(ans['answer']))
+            self.results_table.setItem(row, 2, QTableWidgetItem(ans['user_answer']))
             
-            # Correct answer
-            correct_item = QTableWidgetItem(answer_data['answer'])
-            self.results_table.setItem(row, 1, correct_item)
-            
-            # User's answer
-            user_item = QTableWidgetItem(answer_data['user_answer'])
-            self.results_table.setItem(row, 2, user_item)
-            
-            # Explanation
-            explanation = ""
-            if answer_data['metadata']:
+            expl = ""
+            if ans.get('metadata'):
                 try:
-                    metadata = json.loads(answer_data['metadata']) if isinstance(answer_data['metadata'], str) else answer_data['metadata']
-                    explanation = metadata.get('explanation', '')
-                except Exception:
+                    meta = json.loads(ans['metadata']) if isinstance(ans['metadata'], str) else ans['metadata']
+                    expl = meta.get('explanation', '')
+                except:
                     pass
-            expl_item = QTableWidgetItem(explanation)
-            self.results_table.setItem(row, 3, expl_item)
+            self.results_table.setItem(row, 3, QTableWidgetItem(expl))
             
-            # Highlight wrong answers in red
-            if not answer_data['correct']:
-                for col in range(4):
-                    item = self.results_table.item(row, col)
-                    if item:
-                        item.setBackground(Qt.red)
-                        item.setForeground(Qt.white)
-            else:
-                # Highlight correct answers in green
-                for col in range(4):
-                    item = self.results_table.item(row, col)
-                    if item:
-                        item.setBackground(Qt.green)
-                        item.setForeground(Qt.white)
+            # Color code: green for correct, red for wrong
+            color = QColor(0, 128, 0) if ans['correct'] else QColor(255, 0, 0)
+            for col in range(4):
+                item = self.results_table.item(row, col)
+                item.setBackground(color)
+                item.setForeground(Qt.white)
         
-        # Hide quiz display, show results
         self.quiz_display_widget.hide()
         self.quiz_results_widget.show()
         self.load_stats()

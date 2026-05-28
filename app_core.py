@@ -180,15 +180,17 @@ def import_json(path):
             a = item.get('answer', '')
             t = item.get('type', 'free')
             metadata = item.get('metadata')
-            
-            # If options are provided, this is an MCQ
-            if 'options' in item and not metadata:
-                t = 'MCQ'
-                metadata = {'options': item.get('options', [])}
-            elif 'options' in item and metadata:
+            if not isinstance(metadata, dict):
+                metadata = {}
+
+            if 'options' in item:
                 t = 'MCQ'
                 metadata['options'] = item.get('options', [])
-            
+
+            explanation = item.get('explanation')
+            if explanation:
+                metadata['explanation'] = explanation
+
             if q:
                 qid = add_question(domain, q, a, t, metadata)
                 try:
