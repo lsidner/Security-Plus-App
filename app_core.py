@@ -74,6 +74,34 @@ def init_db():
         )
         """
     )
+    
+    # quizzes table for tracking quiz attempts
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS quizzes (
+            id INTEGER PRIMARY KEY,
+            domain TEXT,
+            total_questions INTEGER,
+            score INTEGER,
+            timestamp TEXT
+        )
+        """
+    )
+    
+    # quiz_answers table for tracking individual quiz question results
+    c.execute(
+        """
+        CREATE TABLE IF NOT EXISTS quiz_answers (
+            id INTEGER PRIMARY KEY,
+            quiz_id INTEGER,
+            question_id INTEGER,
+            user_answer TEXT,
+            correct INTEGER,
+            FOREIGN KEY(quiz_id) REFERENCES quizzes(id),
+            FOREIGN KEY(question_id) REFERENCES questions(id)
+        )
+        """
+    )
     conn.commit()
     conn.close()
 
@@ -152,15 +180,17 @@ def import_json(path):
             a = item.get('answer', '')
             t = item.get('type', 'free')
             metadata = item.get('metadata')
-            
-            # If options are provided, this is an MCQ
-            if 'options' in item and not metadata:
-                t = 'MCQ'
-                metadata = {'options': item.get('options', [])}
-            elif 'options' in item and metadata:
+            if not isinstance(metadata, dict):
+                metadata = {}
+
+            if 'options' in item:
                 t = 'MCQ'
                 metadata['options'] = item.get('options', [])
-            
+
+            explanation = item.get('explanation')
+            if explanation:
+                metadata['explanation'] = explanation
+
             if q:
                 qid = add_question(domain, q, a, t, metadata)
                 try:
@@ -267,6 +297,83 @@ def due_flashcards():
     c.execute(
         "SELECT f.id as fid, q.* FROM flashcards f JOIN questions q ON f.question_id=q.id WHERE f.next_review<=? ORDER BY f.next_review",
         (today,)
+    )
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+
+# Quiz tracking functions
+def create_quiz(domain, total_questions):
+    """Create a new quiz attempt and return the quiz ID."""
+    conn = get_conn()
+    c = conn.cursor()
+    timestamp = datetime.datetime.utcnow().isoformat()
+    c.execute(
+        "INSERT INTO quizzes (domain, total_questions, score, timestamp) VALUES (?, ?, ?, ?)",
+        (domain, total_questions, 0, timestamp)
+    )
+    quiz_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    return quiz_id
+
+
+def record_quiz_answer(quiz_id, question_id, user_answer, correct):
+    """Record an individual answer in a quiz."""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO quiz_answers (quiz_id, question_id, user_answer, correct) VALUES (?, ?, ?, ?)",
+        (quiz_id, question_id, user_answer, 1 if correct else 0)
+    )
+    conn.commit()
+    conn.close()
+
+
+def update_quiz_score(quiz_id, score):
+    """Update the quiz score after completion."""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "UPDATE quizzes SET score = ? WHERE id = ?",
+        (score, quiz_id)
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_quiz_history(limit=20):
+    """Get the last N quiz attempts with details."""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT id, domain, total_questions, score, timestamp 
+        FROM quizzes 
+        ORDER BY timestamp DESC 
+        LIMIT ?
+        """,
+        (limit,)
+    )
+    rows = c.fetchall()
+    conn.close()
+    return rows
+
+
+def get_quiz_details(quiz_id):
+    """Get detailed results for a specific quiz."""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        """
+        SELECT qa.id, q.question, q.answer, q.metadata, qa.user_answer, qa.correct
+        FROM quiz_answers qa
+        JOIN questions q ON qa.question_id = q.id
+        WHERE qa.quiz_id = ?
+        ORDER BY qa.id
+        """,
+        (quiz_id,)
     )
     rows = c.fetchall()
     conn.close()
