@@ -12,9 +12,9 @@ from PySide6.QtWidgets import QApplication
 def main():
     init_db()
     app = QApplication(sys.argv)
-    icon_path = Path(__file__).with_name("app_icon.png")
+    icon_path = Path(__file__).parent.parent / "assets" / "app_icon.png"
     if not icon_path.exists():
-        icon_path = Path(__file__).with_name("app_icon.ico")
+        icon_path = Path(__file__).parent.parent / "assets" / "app_icon.ico"
     if icon_path.exists():
         app.setWindowIcon(QIcon(str(icon_path)))
     win = MainWindow()
