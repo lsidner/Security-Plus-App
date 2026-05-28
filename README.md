@@ -42,6 +42,12 @@ python security_app.py
 - **CSV**: Use a header row with columns: `domain,question,answer,type`.
 - **JSON**: Each item can include `domain`, `question`, `answer`, `type`, `options`, and `explanation`.
 
+Example CSV item:
+```csv
+domain,question,answer,type,option a,option b,option c,option d
+Network Security,Which protocol is used to securely transfer files over a network?,SFTP,MCQ,FTP,SFTP,Telnet,SMTP
+```
+
 Example JSON item:
 ```json
 {

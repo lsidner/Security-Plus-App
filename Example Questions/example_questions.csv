@@ -1,0 +1,3 @@
+domain,question,answer,type,option a,option b,option c,option d
+Network Security,Which protocol is used to securely transfer files over a network?,SFTP,MCQ,FTP,SFTP,Telnet,SMTP
+Access Control,What principle limits user access to only what is necessary?,Least privilege,free,,,

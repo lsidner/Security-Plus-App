@@ -1,0 +1,134 @@
+[
+    {
+        "question": "In a corporate office, employees are required to use their access cards to enter different sections of the building. What type of control is being implemented in this scenario?",
+        "options": [
+            "Detective control",
+            "Preventive control",
+            "Physical control",
+            "Corrective control"
+        ],
+        "answer": "Physical control",
+        "explanation": "The use of access cards to enter different sections of the building is an example of physical control, as it restricts and controls physical access to specific areas."
+    },
+    {
+        "question": "A financial institution implements encryption for all sensitive data transmitted between its branches to ensure confidentiality. What type of control is being applied here?",
+        "options": [
+            "Technical control",
+            "Administrative control",
+            "Physical control",
+            "Operational control"
+        ],
+        "answer": "Technical control",
+        "explanation": "Encryption is a technical control that involves the use of technology to protect sensitive data during transmission, ensuring its confidentiality"
+    },
+    {
+        "question": "Which control type involves implementing measures to prevent unauthorized access to systems and data?",
+        "options": [
+            "Detective controls",
+            "Corrective controls",
+            "Preventive controls",
+            "Compensating controls"
+        ],
+        "answer": "Preventive controls",
+        "explanation": "Aims to stop security incidents before they occur, such as implementing firewalls and access controls."
+    },
+    {
+        "question": "Which control type focuses on minimizing the impact of a security incident and restoring normal operations quickly?",
+        "options": [
+            "Preventive controls",
+            "Detective controls",
+            "Corrective controls",
+            "Deterrent controls"
+        ],
+        "answer": "Corrective controls",
+        "explanation": "Corrective controls are implemented to mitigate the impact of security incidents and restore systems to normal operations."
+    },
+    {
+        "question": "A company encrypts sensitive customer data to prevent unauthorized access. What security principle does this primarily address?",
+        "options": [
+            "Confidentiality",
+            "Integrity",
+            "Availability",
+            "Non-repudiation"
+        ],
+        "answer": "Confidentiality",
+        "explanation": "Encryption ensures that sensitive data remains confidential and is not accessible to unauthorized individuals."
+    },
+    {
+        "question": "An organization is implementing encryption to secure sensitive data, and they are considering using the Advanced Encryption Standard (AES). What key lengths are commonly used with AES for secure encryption?",
+        "options": [
+            "64-bit keys",
+            "128-bit keys",
+            "256-bit keys",
+            "512-bit keys"
+        ],
+        "answer": "128-bit keys",
+        "explanation": "AES commonly uses key lengths of 128 bits, which provides a high level of security. While AES supports other key lengths like 192 bits and 256 bits, 128 bits is widely adopted and considered secure for most applications."
+    },
+    {
+        "question": "A financial institution is implementing a system to securely store and manage cryptographic keys used in its payment processing application. Which cryptographic tool is best suited for this purpose, providing a dedicated hardware-based solution for key protection?",
+        "options": [
+            "Key Management System (KMS)",
+            "Trusted Platform Module (TPM)",
+            "Hardware Security Module (HSM)",
+            "Secure Enclave"
+        ],
+        "answer": "Hardware Security Module (HSM)",
+        "explanation": "HSMs are dedicated hardware devices designed to provide secure key storage and cryptographic operations. They are commonly used in financial and other security-critical applications."
+    },
+    {
+        "question": "An organization is setting up a disaster recovery site in a geographically distant location from its primary data center. What type of disaster recovery strategy is this?",
+        "options": [
+            "High availability",
+            "Cold site",
+            "Hot site",
+            "Warm site"
+        ],
+        "answer": "Hot site",
+        "explanation": "A hot site is a disaster recovery strategy where a fully operational data center is set up in a geographically distant location, ready to take over in case of a disaster. It offers the highest level of availability."
+    },
+    {
+        "question": "What could be a potential indicator of a brute force attack on a network?",
+        "options": [
+            "Rapid increase in legitimate traffic",
+            "Repeated login attempts with different credentials",
+            "Decrease in CPU usage on the server",
+            "Increase in available system resources"
+        ],
+        "answer": "Repeated login attempts with different credentials",
+        "explanation": "A brute force attack involves repeated attempts to gain unauthorized access by trying various login credentials, which could be a potential indicator of this attack."
+    },
+    {
+        "question": "Which team is primarily focused on the defense, prevention, and mitigation of security threats within an organization?",
+        "options": [
+            "Red-team",
+            "Blue-team",
+            "White-team",
+            "Purple-team"
+        ],
+        "answer": "Blue-team",
+        "explanation": "Responsible for maintaining and enhancing security defenses and practices within an organization."
+    },
+    {
+        "question": "During a network security assessment, the scanning tool flags an outdated software version as a high-severity risk. After manual investigation, it's revealed that the software's vulnerability has been patched. What type of detection is this likely to be?",
+        "options": [
+            "False positive",
+            "False negative",
+            "True positive",
+            "True negative"
+        ],
+        "answer": "False positive",
+        "explanation": "The scanning tool misidentifies the patched vulnerability as a high-severity risk, indicating a false positive. Incorrect answer explanations: A false negative would involve missing an actual vulnerability, not an already patched one, a True positive indicates correctly identifying an actual vulnerability, and a True negative denotes accurately identifying the absence of a vulnerability."
+    },
+    {
+        "question": "An organization wants to allow only secure web traffic through the firewall. What port is commonly associated with secure web communication?",
+        "options": [
+            "Port 80",
+            "Port 443",
+            "Port 25",
+            "Port 110"
+        ],
+        "answer": "Port 443",
+        "explanation": "Port 443 is commonly associated with HTTPS (Hypertext Transfer Protocol Secure), which is used for secure web communication."
+    }
+]
