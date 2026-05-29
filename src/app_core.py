@@ -12,11 +12,30 @@ Functions include:
 """
 
 # Import necessary modules
+import sys
 import sqlite3
 import csv
 import json
 import datetime
 from pathlib import Path
+
+
+def resolve_asset_path(filename):
+    candidates = []
+    bundled = getattr(sys, '_MEIPASS', None)
+    if bundled:
+        bundle_path = Path(bundled)
+        candidates.append(bundle_path / 'assets')
+        candidates.append(bundle_path)
+
+    project_root = Path(__file__).resolve().parents[1]
+    candidates.append(project_root / 'assets')
+
+    for base in candidates:
+        candidate = base / filename
+        if candidate.exists():
+            return candidate
+    return None
 
 #Make a database file in a new directory in the user's home directory
 APP_DIR = Path.home() / ".security_plus_study_app"

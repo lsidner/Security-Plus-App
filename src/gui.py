@@ -20,7 +20,7 @@ from app_core import (
     list_domains, get_questions, record_attempt, stats_per_domain,
     schedule_update, due_flashcards, create_quiz, record_quiz_answer,
     update_quiz_score, get_quiz_history, get_quiz_details, clear_quiz_history,
-    assign_missing_domains
+    assign_missing_domains, resolve_asset_path
 )
 
 # Optional: progress chart
@@ -41,10 +41,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Security+ Study App")
         self.setFixedSize(1000, 700)
 
-        icon_path = Path(__file__).with_name("app_icon.png")
-        if not icon_path.exists():
-            icon_path = Path(__file__).with_name("app_icon.ico")
-        if icon_path.exists():
+        icon_path = resolve_asset_path("app_icon.png")
+        if not icon_path:
+            icon_path = resolve_asset_path("app_icon.ico")
+        if icon_path:
             self.setWindowIcon(QIcon(str(icon_path)))
 
         self.tabs = QTabWidget()
