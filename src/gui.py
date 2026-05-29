@@ -19,7 +19,7 @@ from app_core import (
     get_conn, add_question, import_csv, import_json,
     list_domains, get_questions, record_attempt, stats_per_domain,
     schedule_update, due_flashcards, create_quiz, record_quiz_answer,
-    update_quiz_score, get_quiz_history, get_quiz_details
+    update_quiz_score, get_quiz_history, get_quiz_details, clear_quiz_history
 )
 
 # Optional: progress chart
@@ -84,6 +84,7 @@ class MainWindow(QMainWindow):
         left.addWidget(reload_btn)
 
         right.addWidget(QLabel("<h3>Quick Actions</h3>"))
+        right.addSpacing(8)
         btn_flash = QPushButton("Study Due Flashcards")
         btn_flash.clicked.connect(lambda: self.tabs.setCurrentIndex(1))
         right.addWidget(btn_flash)
@@ -93,7 +94,7 @@ class MainWindow(QMainWindow):
         right.addWidget(btn_quiz)
 
         btn_import = QPushButton("Import Questions")
-        btn_import.clicked.connect(lambda: self.tabs.setCurrentIndex(4))
+        btn_import.clicked.connect(lambda: self.tabs.setCurrentIndex(5))
         right.addWidget(btn_import)
 
         layout.addLayout(h)
@@ -663,6 +664,10 @@ class MainWindow(QMainWindow):
         self.history_details_table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.history_details_table)
 
+        clear_history_btn = QPushButton("Clear Quiz History")
+        clear_history_btn.clicked.connect(self.clear_quiz_history)
+        layout.addWidget(clear_history_btn)
+
         refresh_btn = QPushButton("Refresh History")
         refresh_btn.clicked.connect(self.load_quiz_history)
         layout.addWidget(refresh_btn)
@@ -745,6 +750,26 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", f"Failed to load quiz details: {e}")
             print(f"Error loading quiz details: {e}")
 
+    def clear_quiz_history(self):
+        """Clear all quiz history from the database."""
+        reply = QMessageBox.question(
+            self,
+            "Clear history?",
+            "This will remove all saved quiz history. Continue?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            clear_quiz_history()
+            self.history_details_table.setRowCount(0)
+            self.load_quiz_history()
+            QMessageBox.information(self, "History cleared", "Quiz history has been cleared.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to clear quiz history: {e}")
+            print(f"Error clearing quiz history: {e}")
+
     def on_history_selection_changed(self):
         """Handle selection change in history table (for potential future features)."""
         pass
@@ -764,20 +789,31 @@ class MainWindow(QMainWindow):
         btn_json = QPushButton("Import JSON...")
         btn_json.clicked.connect(self.on_import_json)
         layout.addWidget(btn_json)
-        layout.addWidget(QLabel(
-            "CSV format:<br>"
-            "<pre>domain,question,option a,option b,option c,option d,answer,explanation\nDomain 1,What is X?,Option A,Option B,Option C,Option D,Answer X,Explanation X</pre>"
-        ))
-        layout.addWidget(QLabel(
-            "JSON format:<br>"
-            "<pre>[{\"domain\": \"Domain 1\", \"question\": \"What is X?\", \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"], \"answer\": \"Answer X\", \"explanation\": \"Explanation X\"}]</pre>"
-            "<li>domain</li>"
-            "<li>question</li>"
-            "<li>options (for MCQs, optional for free form)</li>" \
-            "<li>answer</li>"
-            "<li>explanation</li>"
-            "</ul>"
-        ))
+
+        csv_format = QTextEdit()
+        csv_format.setReadOnly(True)
+        csv_format.setPlainText(
+            "CSV format:\n"
+            "domain,question,option a,option b,option c,option d,answer,explanation\n"
+            "Domain 1,What is X?,Option A,Option B,Option C,Option D,Answer X,Explanation X"
+        )
+        csv_format.setMinimumHeight(80)
+        layout.addWidget(csv_format)
+
+        json_format = QTextEdit()
+        json_format.setReadOnly(True)
+        json_format.setPlainText(
+            "JSON format:\n"
+            "[{\"domain\": \"Domain 1\", \"question\": \"What is X?\", \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"], \"answer\": \"Answer X\", \"explanation\": \"Explanation X\"}]\n\n"
+            "Required fields:\n"
+            "- domain\n"
+            "- question\n"
+            "- options (for MCQs, optional for free form)\n"
+            "- answer\n"
+            "- explanation"
+        )
+        json_format.setMinimumHeight(140)
+        layout.addWidget(json_format)
         self.tabs.addTab(w, "Import")
 
     def on_import_csv(self):
@@ -851,10 +887,11 @@ class MainWindow(QMainWindow):
         reply = QMessageBox.question(
             self,
             "Are you sure?",
-            "This will delete ALL questions, flashcards, attempts, and progress. Continue?",
+            "This will delete ALL questions, flashcards, attempts, quiz history, and progress. Continue?",
             QMessageBox.Yes | QMessageBox.No
         )
         if reply == QMessageBox.Yes:
+            clear_quiz_history()
             conn = get_conn()
             c = conn.cursor()
             c.execute("DELETE FROM attempts")
@@ -865,6 +902,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Reset", "Database reset")
             self.reload_domains()
             self.load_stats()
+            self.load_quiz_history()
             try:
                 self.load_due_flashcards()
             except Exception:

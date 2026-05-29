@@ -378,3 +378,13 @@ def get_quiz_details(quiz_id):
     rows = c.fetchall()
     conn.close()
     return rows
+
+
+def clear_quiz_history():
+    """Remove all stored quiz history and per-question quiz answers."""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DELETE FROM quiz_answers")
+    c.execute("DELETE FROM quizzes")
+    conn.commit()
+    conn.close()
