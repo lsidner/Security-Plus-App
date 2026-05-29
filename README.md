@@ -1,75 +1,122 @@
 # Security+ Study App
 
-A desktop application to help you study for the CompTIA Security+ exam. It includes flashcards with spaced repetition, question imports, an inline quiz workflow, per-attempt results, and quiz history tracking. The database is created and stored locally in the user's home directory (C:\Users\username\.security_plus_study_app).
+A Qt desktop application to help you study for the CompTIA Security+ exam.
 
-## Features
+The app stores data locally in your home directory at `~/.security_plus_study_app/study.db` and includes:
 
-- **Flashcards** with simplified spaced repetition and review scheduling.
-- **Question bank import** from CSV and JSON files.
-- **Inline quiz mode** in the Quiz tab, including multiple-choice buttons.
-- **Quiz results** after each attempt, including which answers were wrong and explanations.
-- **Quiz history** with per-attempt details, including explanations for each question.
-- **Progress tracking** and local database storage.
+- Flashcards with simplified spaced repetition scheduling
+- CSV / JSON question import support
+- Inline quiz mode with multiple-choice and free-form questions
+- Per-question quiz results and explanations
+- Quiz history tracking with answer review
+- Dashboard stats and optional progress charting
+
+## Project Structure
+
+- `src/security_app.py` — app launcher
+- `src/gui.py` — main GUI and tab logic
+- `src/app_core.py` — database helpers, import logic, flashcard scheduling, and quiz tracking
+- `requirements.txt` — Python dependencies
+- `assets/` — app icons and static assets
+- `data/example_questions/` — sample question files
+
+## Requirements
+
+- Python 3.8+
+- `PySide6` for the GUI
+- `matplotlib` is optional for dashboard charts
 
 ## Installation
 
-1. **Requirements**: Python 3.8+, [PySide6](https://pypi.org/project/PySide6/), and optional plotting dependencies if you use charting features.
-2. **Install dependencies**:
+1. Clone the repository:
    ```sh
-   pip install PySide6
+   git clone https://github.com/lnsydnr/Security-Plus-App.git
+   cd Security-Plus-App
    ```
-3. **Clone or download this repository**.
+2. Install dependencies:
    ```sh
-   git clone https://github.com/lnsydnr/Security-Plus-App
+   python -m pip install -r requirements.txt
    ```
 
-## Usage
+## Running the App
 
-Run the app from your terminal:
+From the repository root, launch the app from the `src` directory:
+
 ```sh
+cd src
 python security_app.py
 ```
 
-### Quiz workflow
+## App Tabs
 
-- Open the **Quiz** tab to choose a domain and question count.
-- Answer questions inline. Multiple-choice questions show selectable options directly in the quiz tab.
-- After the quiz finishes, review the results table for correct/incorrect answers and explanations.
-- Open the **History** tab to view prior quiz attempts and detailed answer breakdowns.
+- **Dashboard**: overview of quiz accuracy by domain and refreshable stats
+- **Flashcards**: review due flashcards and grade them to update scheduling
+- **Question Bank**: browse and delete stored questions
+- **Quiz**: select domain and question count, answer inline, and see results
+- **History**: review past quiz attempts and detailed answer breakdowns
+- **Import**: load questions from CSV or JSON files
+- **Settings**: export question bank and reset the local database
 
-### Importing Questions
+## Import Formats
 
-- **CSV**: Use a header row with columns: `domain,question,answer,type`.
-- **JSON**: Each item can include `domain`, `question`, `answer`, `type`, `options`, and `explanation`.
+### CSV
 
-Example CSV item:
+Supported CSV fields include:
+
+- `domain`
+- `question`
+- `answer`
+- `type`
+- `option a`
+- `option b`
+- `option c`
+- `option d`
+- `explanation`
+
+Example:
+
 ```csv
-domain,question,answer,type,option a,option b,option c,option d
-Network Security,Which protocol is used to securely transfer files over a network?,SFTP,MCQ,FTP,SFTP,Telnet,SMTP
+domain,question,option a,option b,option c,option d,answer,explanation
+Network Security,Which protocol is used to securely transfer files over a network?,FTP,SFTP,Telnet,SMTP,SFTP,SFTP uses SSH to securely transfer files.
 ```
 
-Example JSON item:
+### JSON
+
+Each item should include:
+
+- `domain`
+- `question`
+- `answer`
+- `options` (for MCQs)
+- `explanation`
+
+Example:
+
 ```json
-{
-  "question": "Which protocol is used to securely transfer files over a network?",
-  "domain": "Network Security",
-  "options": ["FTP", "SFTP", "Telnet", "SMTP"],
-  "answer": "SFTP",
-  "explanation": "SFTP uses SSH to securely transfer files."
-}
+[
+  {
+    "domain": "Network Security",
+    "question": "Which protocol is used to securely transfer files over a network?",
+    "options": ["FTP", "SFTP", "Telnet", "SMTP"],
+    "answer": "SFTP",
+    "explanation": "SFTP uses SSH to securely transfer files."
+  }
+]
 ```
 
-### Exporting Questions
+## Exporting Questions
 
-- Go to the **Settings** tab and click "Export Question Bank (JSON)".
+Use the **Settings** tab and click **Export Question Bank (JSON)** to save all stored questions.
 
-### Resetting Progress
+## Resetting the Database
 
-- Go to the **Settings** tab and click "Reset Database" to delete all questions and progress.
+Use the **Settings** tab and click **Reset Database (delete all)** to remove all questions, flashcards, attempts, quizzes, and progress.
 
-## Contributing
+## Notes
 
-Pull requests and suggestions are welcome! Please open an issue for bugs or feature requests.
+- Quiz answers are stored in the local SQLite database for history and statistics.
+- Flashcard scheduling uses a simplified SM-2-like algorithm.
+- The app supports both multiple-choice and free-form questions.
 
 ## License
 
