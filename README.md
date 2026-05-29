@@ -118,6 +118,18 @@ Use the **Settings** tab and click **Reset Database (delete all)** to remove all
 - Flashcard scheduling uses a simplified SM-2-like algorithm.
 - The app supports both multiple-choice and free-form questions.
 
+## Uninstall
+To uninstall, simply delete the executable or the repository (if cloned locally) and remove the local data directory at `~/.security_plus_study_app/`.
+
+Windows:
+```powershell
+Remove-Item -Recurse -Force ~/.security_plus_study_app/
+```
+Linux/Mac:
+```bash
+rm -rf ~/.security_plus_study_app/
+```
+
 ## License
 
 MIT License. See [LICENSE](LICENSE) for details.
