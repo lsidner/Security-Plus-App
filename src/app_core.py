@@ -12,11 +12,30 @@ Functions include:
 """
 
 # Import necessary modules
+import sys
 import sqlite3
 import csv
 import json
 import datetime
 from pathlib import Path
+
+
+def resolve_asset_path(filename):
+    candidates = []
+    bundled = getattr(sys, '_MEIPASS', None)
+    if bundled:
+        bundle_path = Path(bundled)
+        candidates.append(bundle_path / 'assets')
+        candidates.append(bundle_path)
+
+    project_root = Path(__file__).resolve().parents[1]
+    candidates.append(project_root / 'assets')
+
+    for base in candidates:
+        candidate = base / filename
+        if candidate.exists():
+            return candidate
+    return None
 
 #Make a database file in a new directory in the user's home directory
 APP_DIR = Path.home() / ".security_plus_study_app"
@@ -119,6 +138,93 @@ def add_question(domain, question, answer, qtype='free', metadata=None):
     return qid
 
 
+DOMAIN_KEYWORDS = {
+    "Threats, Attacks, and Vulnerabilities": [
+        "malware", "trojan", "virus", "worm", "rootkit", "spyware", "ransomware",
+        "phishing", "spearphishing", "smishing", "vishing", "social engineering",
+        "denial of service", "dos", "ddos", "brute force", "credential stuffing",
+        "replay attack", "spoofing", "on-path", "man-in-the-middle", "arp", "cache poisoning",
+        "dns poisoning", "sql injection", "zero-day", "exploit", "vulnerability", "attack",
+        "attacker", "unauthorized access"
+    ],
+    "Architecture and Design": [
+        "trusted boot", "tpm", "hsm", "wireless", "wpa3", "vpn", "load balancer",
+        "virtual ip", "ids", "ips", "ngfw", "waf", "dlp", "fde", "bollard",
+        "biometric scanner", "physical security", "encryption key", "ephemeral keys",
+        "tls", "ssl", "dnssec", "certificate", "firewall", "sftp", "email security",
+        "dkim", "spf", "dmarc", "secure baseline", "load-balancing"
+    ],
+    "Implementation": [
+        "application deny list", "allow list", "group policy", "password length",
+        "reversible encryption", "antivirus", "secure erase", "sanitize", "deploy",
+        "configure", "install", "least privilege", "access control", "multi-factor",
+        "fingerprint scan", "password", "digital signature", "verify", "full-disk encryption"
+    ],
+    "Operations and Incident Response": [
+        "incident", "forensic", "packet capture", "netflow", "vulnerability scans",
+        "security testing", "assessments", "audits", "logs", "monitor", "response",
+        "investigating", "review raw network traffic", "dashboard reporting",
+        "risk indicators", "risk trend analysis", "reports"
+    ],
+    "Governance, Risk, and Compliance": [
+        "legal hold", "vendor", "financial stability", "reputation", "regulatory compliance",
+        "compliance", "privacy", "personal information", "online banking",
+        "information security program", "risk event", "risk management", "policy",
+        "management", "business-critical", "sensitive data"
+    ]
+}
+
+
+def infer_question_domain(question, explanation=None, metadata=None):
+    """Infer a CompTIA Security+ objective domain from question content."""
+    text = " ".join(filter(None, [
+        question or "",
+        explanation or "",
+        metadata.get('explanation') if isinstance(metadata, dict) else ""
+    ])).lower()
+
+    best_domain = None
+    best_score = 0
+    for domain, keywords in DOMAIN_KEYWORDS.items():
+        score = 0
+        for keyword in keywords:
+            if keyword in text:
+                score += 1
+        if score > best_score:
+            best_domain = domain
+            best_score = score
+
+    if best_domain and best_score > 0:
+        return best_domain
+
+    return "General"
+
+
+def assign_missing_domains():
+    """Infer domains for questions that are missing or still labeled as generic."""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute(
+        "SELECT id, question, metadata FROM questions WHERE domain IS NULL OR TRIM(domain)='' OR LOWER(domain)='general'"
+    )
+    rows = c.fetchall()
+    updated = 0
+    for row in rows:
+        metadata = json.loads(row['metadata']) if row['metadata'] else {}
+        explanation = metadata.get('explanation')
+        inferred_domain = infer_question_domain(row['question'], explanation, metadata)
+        c.execute("UPDATE questions SET domain=? WHERE id=?", (inferred_domain, row['id']))
+        updated += 1
+    conn.commit()
+    c.execute("SELECT COUNT(*) FROM questions WHERE domain IS NULL OR TRIM(domain)='' OR LOWER(domain)='general'")
+    remaining = c.fetchone()[0]
+    conn.close()
+    return {
+        "updated": updated,
+        "remaining": remaining
+    }
+
+
 def _ensure_flashcard_for(question_id):
     """Create a flashcards row for question_id if one does not exist.
     New flashcards are scheduled for today so they appear in the due list.
@@ -137,13 +243,103 @@ def _ensure_flashcard_for(question_id):
         conn.commit()
     conn.close()
 
+def _parse_question_metadata(metadata):
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            return {}
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _normalize_question_record(item):
+    option_fields = ['option a', 'option b', 'option c', 'option d']
+
+    if not isinstance(item, dict):
+        return None
+
+    question = item.get('question') or item.get('prompt') or item.get('text')
+    answer = item.get('answer') or item.get('correct_answer') or item.get('correct') or ''
+    domain = item.get('domain') or item.get('Domain') or ''
+    explanation = item.get('explanation')
+    metadata = _parse_question_metadata(item.get('metadata'))
+    if not explanation:
+        explanation = metadata.get('explanation')
+
+    options = item.get('options')
+    if options is None:
+        options = item.get('answers')
+    if options is None:
+        options = metadata.get('options')
+
+    csv_options = []
+    for field in option_fields:
+        value = item.get(field) or item.get(field.upper())
+        if value:
+            csv_options.append(value)
+    if csv_options:
+        options = csv_options
+    if not isinstance(options, list):
+        options = [] if options in (None, '') else [options]
+
+    normalized = {
+        'question': question,
+        'answer': answer,
+    }
+    if domain:
+        normalized['domain'] = domain
+    if explanation:
+        normalized['explanation'] = explanation
+    if options:
+        normalized['options'] = options
+    return normalized if question else None
+
+
+
+def convert_questions_to_import(path, output_path=None):
+    input_path = Path(path)
+    if output_path is None:
+        output_path = input_path.with_name(f"{input_path.stem}_import_ready.json")
+    else:
+        output_path = Path(output_path)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    converted = []
+    if input_path.suffix.lower() == '.csv':
+        with input_path.open('r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                normalized = _normalize_question_record(row)
+                if normalized:
+                    converted.append(normalized)
+    else:
+        with input_path.open('r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        if isinstance(data, dict):
+            if 'questions' in data and isinstance(data['questions'], list):
+                data = data['questions']
+            else:
+                data = [data]
+
+        for item in data:
+            normalized = _normalize_question_record(item)
+            if normalized:
+                converted.append(normalized)
+
+    with output_path.open('w', encoding='utf-8') as f:
+        json.dump(converted, f, ensure_ascii=False, indent=2)
+
+    return len(converted), str(output_path)
+
+
 # Import questions from CSV or JSON file
 def import_csv(path):
     added = 0
     with open(path, newline='', encoding='utf-8') as f:
         reader = csv.DictReader(f)
         for row in reader:
-            domain = row.get('domain') or row.get('Domain') or 'General'
             q = row.get('question') or row.get('Question')
             a = row.get('answer') or row.get('Answer') or ''
             t = row.get('type') or row.get('Type') or 'free'
@@ -155,13 +351,20 @@ def import_csv(path):
                 if opt_val:
                     options.append(opt_val)
             
-            metadata = None
+            metadata = {}
+            explanation = row.get('explanation') or row.get('Explanation')
+            if explanation:
+                metadata['explanation'] = explanation
             if options:
                 t = 'MCQ'
-                metadata = {'options': options}
+                metadata['options'] = options
+
+            domain = row.get('domain') or row.get('Domain')
+            if not domain or str(domain).strip().lower() == 'general':
+                domain = infer_question_domain(q, explanation, metadata)
             
             if q:
-                qid = add_question(domain, q, a, t, metadata)
+                qid = add_question(domain, q, a, t, metadata or None)
                 try:
                     _ensure_flashcard_for(qid)
                 except Exception:
@@ -175,7 +378,6 @@ def import_json(path):
     with open(path, 'r', encoding='utf-8') as f:
         data = json.load(f)
         for item in data:
-            domain = item.get('domain', 'General')
             q = item.get('question')
             a = item.get('answer', '')
             t = item.get('type', 'free')
@@ -190,6 +392,10 @@ def import_json(path):
             explanation = item.get('explanation')
             if explanation:
                 metadata['explanation'] = explanation
+
+            domain = item.get('domain')
+            if not domain or str(domain).strip().lower() == 'general':
+                domain = infer_question_domain(q, explanation, metadata)
 
             if q:
                 qid = add_question(domain, q, a, t, metadata)
@@ -378,3 +584,13 @@ def get_quiz_details(quiz_id):
     rows = c.fetchall()
     conn.close()
     return rows
+
+
+def clear_quiz_history():
+    """Remove all stored quiz history and per-question quiz answers."""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DELETE FROM quiz_answers")
+    c.execute("DELETE FROM quizzes")
+    conn.commit()
+    conn.close()

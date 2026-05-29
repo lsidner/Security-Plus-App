@@ -16,10 +16,11 @@ from PySide6.QtWidgets import (
 )
 
 from app_core import (
-    get_conn, add_question, import_csv, import_json,
+    get_conn, add_question, import_csv, import_json, convert_questions_to_import,
     list_domains, get_questions, record_attempt, stats_per_domain,
     schedule_update, due_flashcards, create_quiz, record_quiz_answer,
-    update_quiz_score, get_quiz_history, get_quiz_details
+    update_quiz_score, get_quiz_history, get_quiz_details, clear_quiz_history,
+    assign_missing_domains, resolve_asset_path
 )
 
 # Optional: progress chart
@@ -40,10 +41,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Security+ Study App")
         self.setFixedSize(1000, 700)
 
-        icon_path = Path(__file__).with_name("app_icon.png")
-        if not icon_path.exists():
-            icon_path = Path(__file__).with_name("app_icon.ico")
-        if icon_path.exists():
+        icon_path = resolve_asset_path("app_icon.png")
+        if not icon_path:
+            icon_path = resolve_asset_path("app_icon.ico")
+        if icon_path:
             self.setWindowIcon(QIcon(str(icon_path)))
 
         self.tabs = QTabWidget()
@@ -77,13 +78,14 @@ class MainWindow(QMainWindow):
         if MATPLOTLIB_AVAILABLE:
             self.fig = Figure(figsize=(4, 2))
             self.canvas = FigureCanvas(self.fig)
-            left.addWidget(self.canvas)
+            left.addWidget(self.canvas, 1)
 
         reload_btn = QPushButton("Refresh Stats")
         reload_btn.clicked.connect(self.load_stats)
         left.addWidget(reload_btn)
 
         right.addWidget(QLabel("<h3>Quick Actions</h3>"))
+        right.addSpacing(8)
         btn_flash = QPushButton("Study Due Flashcards")
         btn_flash.clicked.connect(lambda: self.tabs.setCurrentIndex(1))
         right.addWidget(btn_flash)
@@ -93,7 +95,7 @@ class MainWindow(QMainWindow):
         right.addWidget(btn_quiz)
 
         btn_import = QPushButton("Import Questions")
-        btn_import.clicked.connect(lambda: self.tabs.setCurrentIndex(4))
+        btn_import.clicked.connect(lambda: self.tabs.setCurrentIndex(5))
         right.addWidget(btn_import)
 
         layout.addLayout(h)
@@ -115,11 +117,15 @@ class MainWindow(QMainWindow):
 
         if MATPLOTLIB_AVAILABLE:
             self.fig.clear()
+            width = max(8, len(domains) * 0.9)
+            self.fig.set_size_inches(width, 5.5)
             ax = self.fig.add_subplot(111)
             ax.bar(domains, pct)
             ax.set_ylabel("% Correct")
             ax.set_title("Accuracy by Domain")
             ax.set_ylim(0, 100)
+            ax.tick_params(axis='x', labelrotation=45)
+            self.fig.tight_layout()
             self.canvas.draw()
 
     # Flashcards tab with SRS
@@ -663,6 +669,10 @@ class MainWindow(QMainWindow):
         self.history_details_table.horizontalHeader().setStretchLastSection(True)
         layout.addWidget(self.history_details_table)
 
+        clear_history_btn = QPushButton("Clear Quiz History")
+        clear_history_btn.clicked.connect(self.clear_quiz_history)
+        layout.addWidget(clear_history_btn)
+
         refresh_btn = QPushButton("Refresh History")
         refresh_btn.clicked.connect(self.load_quiz_history)
         layout.addWidget(refresh_btn)
@@ -745,6 +755,26 @@ class MainWindow(QMainWindow):
             QMessageBox.critical(self, "Error", f"Failed to load quiz details: {e}")
             print(f"Error loading quiz details: {e}")
 
+    def clear_quiz_history(self):
+        """Clear all quiz history from the database."""
+        reply = QMessageBox.question(
+            self,
+            "Clear history?",
+            "This will remove all saved quiz history. Continue?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            clear_quiz_history()
+            self.history_details_table.setRowCount(0)
+            self.load_quiz_history()
+            QMessageBox.information(self, "History cleared", "Quiz history has been cleared.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to clear quiz history: {e}")
+            print(f"Error clearing quiz history: {e}")
+
     def on_history_selection_changed(self):
         """Handle selection change in history table (for potential future features)."""
         pass
@@ -764,20 +794,35 @@ class MainWindow(QMainWindow):
         btn_json = QPushButton("Import JSON...")
         btn_json.clicked.connect(self.on_import_json)
         layout.addWidget(btn_json)
-        layout.addWidget(QLabel(
-            "CSV format:<br>"
-            "<pre>domain,question,option a,option b,option c,option d,answer,explanation\nDomain 1,What is X?,Option A,Option B,Option C,Option D,Answer X,Explanation X</pre>"
-        ))
-        layout.addWidget(QLabel(
-            "JSON format:<br>"
-            "<pre>[{\"domain\": \"Domain 1\", \"question\": \"What is X?\", \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"], \"answer\": \"Answer X\", \"explanation\": \"Explanation X\"}]</pre>"
-            "<li>domain</li>"
-            "<li>question</li>"
-            "<li>options (for MCQs, optional for free form)</li>" \
-            "<li>answer</li>"
-            "<li>explanation</li>"
-            "</ul>"
-        ))
+
+        btn_convert = QPushButton("Convert Questions File to Import Format...")
+        btn_convert.clicked.connect(self.on_convert_questions)
+        layout.addWidget(btn_convert)
+
+        csv_format = QTextEdit()
+        csv_format.setReadOnly(True)
+        csv_format.setPlainText(
+            "CSV format:\n"
+            "domain,question,option a,option b,option c,option d,answer,explanation\n"
+            "Domain 1,What is X?,Option A,Option B,Option C,Option D,Answer X,Explanation X"
+        )
+        csv_format.setMinimumHeight(80)
+        layout.addWidget(csv_format)
+
+        json_format = QTextEdit()
+        json_format.setReadOnly(True)
+        json_format.setPlainText(
+            "JSON format:\n"
+            "[{\"domain\": \"Domain 1\", \"question\": \"What is X?\", \"options\": [\"Option A\", \"Option B\", \"Option C\", \"Option D\"], \"answer\": \"Answer X\", \"explanation\": \"Explanation X\"}]\n\n"
+            "Required fields:\n"
+            "- domain\n"
+            "- question\n"
+            "- options (for MCQs, optional for free form)\n"
+            "- answer\n"
+            "- explanation"
+        )
+        json_format.setMinimumHeight(140)
+        layout.addWidget(json_format)
         self.tabs.addTab(w, "Import")
 
     def on_import_csv(self):
@@ -808,6 +853,32 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+    def on_convert_questions(self):
+        source_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Questions File",
+            str(Path.home()),
+            "Question files (*.csv *.json);;CSV files (*.csv);;JSON files (*.json)"
+        )
+        if not source_path:
+            return
+
+        default_output = str(Path(source_path).with_name(f"{Path(source_path).stem}_import_ready.json"))
+        output_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Converted Questions",
+            default_output,
+            "JSON files (*.json)"
+        )
+        if not output_path:
+            return
+
+        try:
+            converted_count, converted_file = convert_questions_to_import(source_path, output_path)
+            QMessageBox.information(self, "Converted", f"Converted {converted_count} questions to {converted_file}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to convert questions: {e}")
+
     def settings_tab(self):
         w = QWidget()
         layout = QVBoxLayout()
@@ -819,11 +890,36 @@ class MainWindow(QMainWindow):
         export_btn.clicked.connect(self.export_bank)
         layout.addWidget(export_btn)
 
+        assign_domains_btn = QPushButton("Add Domains to Missing Questions")
+        assign_domains_btn.clicked.connect(self.add_domains_to_questions)
+        layout.addWidget(assign_domains_btn)
+
         reset_btn = QPushButton("Reset Database (delete all)")
         reset_btn.clicked.connect(self.reset_db)
         layout.addWidget(reset_btn)
 
         self.tabs.addTab(w, "Settings")
+
+    def add_domains_to_questions(self):
+        try:
+            summary = assign_missing_domains()
+            self.reload_domains()
+            self.load_stats()
+            if summary['updated']:
+                QMessageBox.information(
+                    self,
+                    "Domains updated",
+                    f"Assigned domains to {summary['updated']} question(s). {summary['remaining']} still need review."
+                )
+            else:
+                QMessageBox.information(
+                    self,
+                    "No domains updated",
+                    "All questions already have domains assigned."
+                )
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to assign domains: {e}")
+            print(f"Error assigning domains: {e}")
 
     # Export question bank to JSON
     def export_bank(self):
@@ -833,12 +929,24 @@ class MainWindow(QMainWindow):
         qs = get_questions(None)
         out = []
         for q in qs:
-            out.append({
+            export_item = {
                 "domain": q["domain"],
                 "question": q["question"],
                 "answer": q["answer"],
                 "type": q["qtype"]
-            })
+            }
+            metadata = q['metadata']
+            if metadata:
+                try:
+                    parsed_metadata = json.loads(metadata) if isinstance(metadata, str) else metadata
+                except (TypeError, json.JSONDecodeError):
+                    parsed_metadata = {}
+                if isinstance(parsed_metadata, dict):
+                    if parsed_metadata.get('options'):
+                        export_item['options'] = parsed_metadata['options']
+                    if parsed_metadata.get('explanation'):
+                        export_item['explanation'] = parsed_metadata['explanation']
+            out.append(export_item)
         try:
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(out, f, ensure_ascii=False, indent=2)
@@ -851,10 +959,11 @@ class MainWindow(QMainWindow):
         reply = QMessageBox.question(
             self,
             "Are you sure?",
-            "This will delete ALL questions, flashcards, attempts, and progress. Continue?",
+            "This will delete ALL questions, flashcards, attempts, quiz history, and progress. Continue?",
             QMessageBox.Yes | QMessageBox.No
         )
         if reply == QMessageBox.Yes:
+            clear_quiz_history()
             conn = get_conn()
             c = conn.cursor()
             c.execute("DELETE FROM attempts")
@@ -865,6 +974,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(self, "Reset", "Database reset")
             self.reload_domains()
             self.load_stats()
+            self.load_quiz_history()
             try:
                 self.load_due_flashcards()
             except Exception:

@@ -55,7 +55,11 @@ python security_app.py
 - **Quiz**: select domain and question count, answer inline, and see results
 - **History**: review past quiz attempts and detailed answer breakdowns
 - **Import**: load questions from CSV or JSON files
-- **Settings**: export question bank and reset the local database
+- **Settings**: export question bank, auto-assign missing domains, and reset the local database
+
+## Automatic Domain Assignment
+
+The app now infers missing domains using CompTIA Security+ objective keyword patterns. This happens automatically during CSV/JSON import when a domain is not supplied, and you can also run a batch reassignment from **Settings** using **Add Domains to Missing Questions**.
 
 ## Import Formats
 
@@ -63,7 +67,7 @@ python security_app.py
 
 Supported CSV fields include:
 
-- `domain`
+- `domain` (optional; missing values are inferred)
 - `question`
 - `answer`
 - `type`
@@ -84,7 +88,7 @@ Network Security,Which protocol is used to securely transfer files over a networ
 
 Each item should include:
 
-- `domain`
+- `domain` (optional; missing values are inferred)
 - `question`
 - `answer`
 - `options` (for MCQs)
@@ -104,6 +108,8 @@ Example:
 ]
 ```
 
+The **Import** tab also includes **Convert Questions File to Import Format...**, which normalizes CSV or JSON question files into the import-ready JSON structure.
+
 ## Exporting Questions
 
 Use the **Settings** tab and click **Export Question Bank (JSON)** to save all stored questions.
@@ -117,6 +123,18 @@ Use the **Settings** tab and click **Reset Database (delete all)** to remove all
 - Quiz answers are stored in the local SQLite database for history and statistics.
 - Flashcard scheduling uses a simplified SM-2-like algorithm.
 - The app supports both multiple-choice and free-form questions.
+
+## Uninstall
+To uninstall, simply delete the executable or the repository (if cloned locally) and remove the local data directory at `~/.security_plus_study_app/`.
+
+Windows:
+```powershell
+Remove-Item -Recurse -Force ~/.security_plus_study_app/
+```
+Linux/Mac:
+```bash
+rm -rf ~/.security_plus_study_app/
+```
 
 ## License
 
