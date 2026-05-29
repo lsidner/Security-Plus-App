@@ -108,6 +108,8 @@ Example:
 ]
 ```
 
+The **Import** tab also includes **Convert Questions File to Import Format...**, which normalizes CSV or JSON question files into the import-ready JSON structure.
+
 ## Exporting Questions
 
 Use the **Settings** tab and click **Export Question Bank (JSON)** to save all stored questions.

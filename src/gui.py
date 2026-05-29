@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from app_core import (
-    get_conn, add_question, import_csv, import_json,
+    get_conn, add_question, import_csv, import_json, convert_questions_to_import,
     list_domains, get_questions, record_attempt, stats_per_domain,
     schedule_update, due_flashcards, create_quiz, record_quiz_answer,
     update_quiz_score, get_quiz_history, get_quiz_details, clear_quiz_history,
@@ -795,6 +795,10 @@ class MainWindow(QMainWindow):
         btn_json.clicked.connect(self.on_import_json)
         layout.addWidget(btn_json)
 
+        btn_convert = QPushButton("Convert Questions File to Import Format...")
+        btn_convert.clicked.connect(self.on_convert_questions)
+        layout.addWidget(btn_convert)
+
         csv_format = QTextEdit()
         csv_format.setReadOnly(True)
         csv_format.setPlainText(
@@ -849,6 +853,32 @@ class MainWindow(QMainWindow):
         except Exception:
             pass
 
+    def on_convert_questions(self):
+        source_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open Questions File",
+            str(Path.home()),
+            "Question files (*.csv *.json);;CSV files (*.csv);;JSON files (*.json)"
+        )
+        if not source_path:
+            return
+
+        default_output = str(Path(source_path).with_name(f"{Path(source_path).stem}_import_ready.json"))
+        output_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Converted Questions",
+            default_output,
+            "JSON files (*.json)"
+        )
+        if not output_path:
+            return
+
+        try:
+            converted_count, converted_file = convert_questions_to_import(source_path, output_path)
+            QMessageBox.information(self, "Converted", f"Converted {converted_count} questions to {converted_file}")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to convert questions: {e}")
+
     def settings_tab(self):
         w = QWidget()
         layout = QVBoxLayout()
@@ -899,12 +929,24 @@ class MainWindow(QMainWindow):
         qs = get_questions(None)
         out = []
         for q in qs:
-            out.append({
+            export_item = {
                 "domain": q["domain"],
                 "question": q["question"],
                 "answer": q["answer"],
                 "type": q["qtype"]
-            })
+            }
+            metadata = q['metadata']
+            if metadata:
+                try:
+                    parsed_metadata = json.loads(metadata) if isinstance(metadata, str) else metadata
+                except (TypeError, json.JSONDecodeError):
+                    parsed_metadata = {}
+                if isinstance(parsed_metadata, dict):
+                    if parsed_metadata.get('options'):
+                        export_item['options'] = parsed_metadata['options']
+                    if parsed_metadata.get('explanation'):
+                        export_item['explanation'] = parsed_metadata['explanation']
+            out.append(export_item)
         try:
             with open(path, 'w', encoding='utf-8') as f:
                 json.dump(out, f, ensure_ascii=False, indent=2)

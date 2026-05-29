@@ -224,6 +224,111 @@ def _ensure_flashcard_for(question_id):
         conn.commit()
     conn.close()
 
+def _parse_question_metadata(metadata):
+    if isinstance(metadata, str):
+        try:
+            metadata = json.loads(metadata)
+        except json.JSONDecodeError:
+            return {}
+    return metadata if isinstance(metadata, dict) else {}
+
+
+def _normalize_question_record(item):
+    option_fields = ['option a', 'option b', 'option c', 'option d']
+
+    if isinstance(item, dict):
+        question = item.get('question') or item.get('prompt') or item.get('text')
+        answer = item.get('answer') or item.get('correct_answer') or ''
+        domain = item.get('domain') or item.get('Domain') or ''
+        explanation = item.get('explanation')
+        metadata = _parse_question_metadata(item.get('metadata'))
+        if not explanation:
+            explanation = metadata.get('explanation')
+        options = item.get('options')
+        if options is None:
+            options = metadata.get('options')
+        csv_options = []
+        for field in option_fields:
+            value = item.get(field) or item.get(field.upper())
+            if value:
+                csv_options.append(value)
+        if csv_options:
+            options = csv_options
+        if not isinstance(options, list):
+            options = [] if options in (None, '') else [options]
+
+        normalized = {
+            'question': question,
+            'answer': answer,
+        }
+        if domain:
+            normalized['domain'] = domain
+        if explanation:
+            normalized['explanation'] = explanation
+        if options:
+            normalized['options'] = options
+        return normalized if question else None
+
+    question = item.get('question') or item.get('Question')
+    answer = item.get('answer') or item.get('Answer') or ''
+    domain = item.get('domain') or item.get('Domain') or ''
+    explanation = item.get('explanation') or item.get('Explanation')
+
+    option_fields = ['option a', 'option b', 'option c', 'option d']
+    options = []
+    for field in option_fields:
+        value = item.get(field) or item.get(field.upper())
+        if value:
+            options.append(value)
+
+    normalized = {
+        'question': question,
+        'answer': answer,
+    }
+    if domain:
+        normalized['domain'] = domain
+    if explanation:
+        normalized['explanation'] = explanation
+    if options:
+        normalized['options'] = options
+    return normalized if question else None
+
+
+def convert_questions_to_import(path, output_path=None):
+    input_path = Path(path)
+    if output_path is None:
+        output_path = input_path.with_name(f"{input_path.stem}_import_ready.json")
+    else:
+        output_path = Path(output_path)
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    converted = []
+    if input_path.suffix.lower() == '.csv':
+        with input_path.open('r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                normalized = _normalize_question_record(row)
+                if normalized:
+                    converted.append(normalized)
+    else:
+        with input_path.open('r', encoding='utf-8') as f:
+            data = json.load(f)
+
+        if isinstance(data, dict):
+            data = [data]
+
+        for item in data:
+            normalized = _normalize_question_record(item)
+            if normalized:
+                converted.append(normalized)
+
+    with output_path.open('w', encoding='utf-8') as f:
+        json.dump(converted, f, ensure_ascii=False, indent=2)
+
+    return len(converted), str(output_path)
+
+
 # Import questions from CSV or JSON file
 def import_csv(path):
     added = 0
