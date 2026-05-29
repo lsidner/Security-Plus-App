@@ -19,7 +19,8 @@ from app_core import (
     get_conn, add_question, import_csv, import_json,
     list_domains, get_questions, record_attempt, stats_per_domain,
     schedule_update, due_flashcards, create_quiz, record_quiz_answer,
-    update_quiz_score, get_quiz_history, get_quiz_details, clear_quiz_history
+    update_quiz_score, get_quiz_history, get_quiz_details, clear_quiz_history,
+    assign_missing_domains
 )
 
 # Optional: progress chart
@@ -77,7 +78,7 @@ class MainWindow(QMainWindow):
         if MATPLOTLIB_AVAILABLE:
             self.fig = Figure(figsize=(4, 2))
             self.canvas = FigureCanvas(self.fig)
-            left.addWidget(self.canvas)
+            left.addWidget(self.canvas, 1)
 
         reload_btn = QPushButton("Refresh Stats")
         reload_btn.clicked.connect(self.load_stats)
@@ -116,11 +117,15 @@ class MainWindow(QMainWindow):
 
         if MATPLOTLIB_AVAILABLE:
             self.fig.clear()
+            width = max(8, len(domains) * 0.9)
+            self.fig.set_size_inches(width, 5.5)
             ax = self.fig.add_subplot(111)
             ax.bar(domains, pct)
             ax.set_ylabel("% Correct")
             ax.set_title("Accuracy by Domain")
             ax.set_ylim(0, 100)
+            ax.tick_params(axis='x', labelrotation=45)
+            self.fig.tight_layout()
             self.canvas.draw()
 
     # Flashcards tab with SRS
@@ -855,11 +860,36 @@ class MainWindow(QMainWindow):
         export_btn.clicked.connect(self.export_bank)
         layout.addWidget(export_btn)
 
+        assign_domains_btn = QPushButton("Add Domains to Missing Questions")
+        assign_domains_btn.clicked.connect(self.add_domains_to_questions)
+        layout.addWidget(assign_domains_btn)
+
         reset_btn = QPushButton("Reset Database (delete all)")
         reset_btn.clicked.connect(self.reset_db)
         layout.addWidget(reset_btn)
 
         self.tabs.addTab(w, "Settings")
+
+    def add_domains_to_questions(self):
+        try:
+            summary = assign_missing_domains()
+            self.reload_domains()
+            self.load_stats()
+            if summary['updated']:
+                QMessageBox.information(
+                    self,
+                    "Domains updated",
+                    f"Assigned domains to {summary['updated']} question(s). {summary['remaining']} still need review."
+                )
+            else:
+                QMessageBox.information(
+                    self,
+                    "No domains updated",
+                    "All questions already have domains assigned."
+                )
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to assign domains: {e}")
+            print(f"Error assigning domains: {e}")
 
     # Export question bank to JSON
     def export_bank(self):

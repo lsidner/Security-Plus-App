@@ -55,7 +55,11 @@ python security_app.py
 - **Quiz**: select domain and question count, answer inline, and see results
 - **History**: review past quiz attempts and detailed answer breakdowns
 - **Import**: load questions from CSV or JSON files
-- **Settings**: export question bank and reset the local database
+- **Settings**: export question bank, auto-assign missing domains, and reset the local database
+
+## Automatic Domain Assignment
+
+The app now infers missing domains using CompTIA Security+ objective keyword patterns. This happens automatically during CSV/JSON import when a domain is not supplied, and you can also run a batch reassignment from **Settings** using **Add Domains to Missing Questions**.
 
 ## Import Formats
 
@@ -63,7 +67,7 @@ python security_app.py
 
 Supported CSV fields include:
 
-- `domain`
+- `domain` (optional; missing values are inferred)
 - `question`
 - `answer`
 - `type`
@@ -84,7 +88,7 @@ Network Security,Which protocol is used to securely transfer files over a networ
 
 Each item should include:
 
-- `domain`
+- `domain` (optional; missing values are inferred)
 - `question`
 - `answer`
 - `options` (for MCQs)
