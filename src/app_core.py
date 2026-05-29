@@ -255,50 +255,32 @@ def _parse_question_metadata(metadata):
 def _normalize_question_record(item):
     option_fields = ['option a', 'option b', 'option c', 'option d']
 
-    if isinstance(item, dict):
-        question = item.get('question') or item.get('prompt') or item.get('text')
-        answer = item.get('answer') or item.get('correct_answer') or ''
-        domain = item.get('domain') or item.get('Domain') or ''
-        explanation = item.get('explanation')
-        metadata = _parse_question_metadata(item.get('metadata'))
-        if not explanation:
-            explanation = metadata.get('explanation')
-        options = item.get('options')
-        if options is None:
-            options = metadata.get('options')
-        csv_options = []
-        for field in option_fields:
-            value = item.get(field) or item.get(field.upper())
-            if value:
-                csv_options.append(value)
-        if csv_options:
-            options = csv_options
-        if not isinstance(options, list):
-            options = [] if options in (None, '') else [options]
+    if not isinstance(item, dict):
+        return None
 
-        normalized = {
-            'question': question,
-            'answer': answer,
-        }
-        if domain:
-            normalized['domain'] = domain
-        if explanation:
-            normalized['explanation'] = explanation
-        if options:
-            normalized['options'] = options
-        return normalized if question else None
-
-    question = item.get('question') or item.get('Question')
-    answer = item.get('answer') or item.get('Answer') or ''
+    question = item.get('question') or item.get('prompt') or item.get('text')
+    answer = item.get('answer') or item.get('correct_answer') or item.get('correct') or ''
     domain = item.get('domain') or item.get('Domain') or ''
-    explanation = item.get('explanation') or item.get('Explanation')
+    explanation = item.get('explanation')
+    metadata = _parse_question_metadata(item.get('metadata'))
+    if not explanation:
+        explanation = metadata.get('explanation')
 
-    option_fields = ['option a', 'option b', 'option c', 'option d']
-    options = []
+    options = item.get('options')
+    if options is None:
+        options = item.get('answers')
+    if options is None:
+        options = metadata.get('options')
+
+    csv_options = []
     for field in option_fields:
         value = item.get(field) or item.get(field.upper())
         if value:
-            options.append(value)
+            csv_options.append(value)
+    if csv_options:
+        options = csv_options
+    if not isinstance(options, list):
+        options = [] if options in (None, '') else [options]
 
     normalized = {
         'question': question,
@@ -311,6 +293,7 @@ def _normalize_question_record(item):
     if options:
         normalized['options'] = options
     return normalized if question else None
+
 
 
 def convert_questions_to_import(path, output_path=None):
@@ -335,7 +318,10 @@ def convert_questions_to_import(path, output_path=None):
             data = json.load(f)
 
         if isinstance(data, dict):
-            data = [data]
+            if 'questions' in data and isinstance(data['questions'], list):
+                data = data['questions']
+            else:
+                data = [data]
 
         for item in data:
             normalized = _normalize_question_record(item)
