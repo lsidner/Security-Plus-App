@@ -39,7 +39,32 @@ class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Security+ Study App")
-        self.setFixedSize(1000, 700)
+        self.resize(1000, 700)
+        self.setWindowFlags(
+            Qt.WindowType.Window | 
+            Qt.WindowType.WindowMinMaxButtonsHint | 
+            Qt.WindowType.WindowCloseButtonHint
+        )
+
+        self.fig = Figure()
+        self.canvas = FigureCanvas(self.fig)
+
+        # Create the scroll area container
+        self.scroll_area = QScrollArea()
+        self.scroll_area.setWidgetResizable(True) # Allows the inner widget to grow
+
+        # Matplotlib requires a widget wrapper inside QScrollArea
+        self.scroll_content = QWidget()
+        self.scroll_layout = QVBoxLayout(self.scroll_content)
+        self.scroll_layout.addWidget(self.canvas) # Put your existing canvas here
+        self.scroll_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Set the content widget onto the scroll area
+        self.scroll_area.setWidget(self.scroll_content)
+
+        # Add the scroll area to your main layout instead of the raw canvas
+        self.main_layout = QVBoxLayout(self)
+        self.main_layout.addWidget(self.scroll_area)
 
         icon_path = resolve_asset_path("app_icon.png")
         if not icon_path:
@@ -76,7 +101,7 @@ class MainWindow(QMainWindow):
         left.addWidget(self.progress_table)
 
         if MATPLOTLIB_AVAILABLE:
-            self.fig = Figure(figsize=(4, 2))
+            self.fig = Figure(figsize=(6, 2))
             self.canvas = FigureCanvas(self.fig)
             left.addWidget(self.canvas, 1)
 
@@ -85,7 +110,7 @@ class MainWindow(QMainWindow):
         left.addWidget(reload_btn)
 
         right.addWidget(QLabel("<h3>Quick Actions</h3>"))
-        right.addSpacing(8)
+        right.addSpacing(0)
         btn_flash = QPushButton("Study Due Flashcards")
         btn_flash.clicked.connect(lambda: self.tabs.setCurrentIndex(1))
         right.addWidget(btn_flash)
@@ -106,26 +131,58 @@ class MainWindow(QMainWindow):
     def load_stats(self):
         stats = stats_per_domain()
         self.progress_table.setRowCount(len(stats))
+    
         domains = []
         pct = []
+    
+        # Block table signals temporarily to speed up bulk row insertions
+        self.progress_table.blockSignals(True)
+    
         for i, s in enumerate(stats):
             self.progress_table.setItem(i, 0, QTableWidgetItem(s['domain']))
             self.progress_table.setItem(i, 1, QTableWidgetItem(str(s['attempts'])))
             self.progress_table.setItem(i, 2, QTableWidgetItem(f"{s['pct']:.1f}%"))
             domains.append(s['domain'])
             pct.append(s['pct'])
+        self.progress_table.blockSignals(False)
 
-        if MATPLOTLIB_AVAILABLE:
+        if MATPLOTLIB_AVAILABLE and domains:  # Added fallback check for empty data
             self.fig.clear()
+        
+            # Calculate dynamic width based on domain count
             width = max(8, len(domains) * 0.9)
             self.fig.set_size_inches(width, 5.5)
+        
             ax = self.fig.add_subplot(111)
-            ax.bar(domains, pct)
+        
+            # Create the bar chart
+            bars = ax.bar(domains, pct, color='#3498db', edgecolor='black') # Added clean styling
+        
+            # Configure axes
             ax.set_ylabel("% Correct")
-            ax.set_title("Accuracy by Domain")
+            ax.set_title("Accuracy by Domain", fontweight='bold', pad=15)
             ax.set_ylim(0, 100)
+        
+            # Crucial change: ha='right' aligns rotated text properly so it doesn't overlap lines
             ax.tick_params(axis='x', labelrotation=45)
+            for label in ax.get_xticklabels():
+                label.set_horizontalalignment('right')
+
+            # Add value labels on top of each bar for easier reading
+            for bar in bars:
+                height = bar.get_height()
+                ax.annotate(f'{height:.1f}%',
+                        xy=(bar.get_x() + bar.get_width() / 2, height),
+                        xytext=(0, 3),  # 3 points vertical offset
+                        textcoords="offset points",
+                        ha='center', va='bottom', fontsize=9)
+
+            # Recalculate margins cleanly to ensure rotated text fits on the screen
+            self.fig.subplots_adjust(bottom=0.25) 
             self.fig.tight_layout()
+
+            # CRUCIAL: Force the canvas widget to physically resize to match the new fig inches
+            self.canvas.setMinimumWidth(int(width * self.fig.dpi))
             self.canvas.draw()
 
     # Flashcards tab with SRS
@@ -139,13 +196,27 @@ class MainWindow(QMainWindow):
         layout.addLayout(left, 3)
         layout.addLayout(right, 2)
 
-        left.addWidget(QLabel("<h2>Flashcards (Due)</h2>"))
-        self.fc_list = QListWidget()
-        left.addWidget(self.fc_list)
-        self.load_due_flashcards()
-        self.fc_list.currentRowChanged.connect(self.show_flashcard)
+        left.addWidget(QLabel("<h2>Flashcards</h2>"))
+        self.due_count_label = QLabel("Due cards: 0")
+        left.addWidget(self.due_count_label)
+
+        self.due_list = QListWidget()
+        self.due_list.currentRowChanged.connect(self.show_flashcard)
+        left.addWidget(self.due_list)
+
+        left.addWidget(QLabel("<h3>Known this session</h3>"))
+        self.known_count_label = QLabel("Known cards: 0")
+        left.addWidget(self.known_count_label)
+        self.known_list = QListWidget()
+        self.known_list.setSelectionMode(QListWidget.NoSelection)
+        self.known_list.setMaximumHeight(160)
+        left.addWidget(self.known_list)
 
         right.addWidget(QLabel("<h3>Card</h3>"))
+        self.card_status_label = QLabel("Select a due card or refresh due cards.")
+        self.card_status_label.setWordWrap(True)
+        right.addWidget(self.card_status_label)
+
         self.card_q = QTextEdit()
         self.card_q.setReadOnly(True)
         self.card_q.setLineWrapMode(QTextEdit.WidgetWidth)
@@ -157,57 +228,102 @@ class MainWindow(QMainWindow):
         self.card_a.hide()
         right.addWidget(self.card_a)
 
-        show_ans_btn = QPushButton("Show Answer")
-        show_ans_btn.clicked.connect(self.card_a.show)
-        right.addWidget(show_ans_btn)
+        self.show_ans_btn = QPushButton("Show Answer")
+        def show_answer_and_disable():
+            self.card_a.show()
+            self.show_ans_btn.setDisabled(True)
+        self.show_ans_btn.clicked.connect(show_answer_and_disable)
+        right.addWidget(self.show_ans_btn)
 
+        import functools
         grades_layout = QHBoxLayout()
         for label, score in [("Again", 0), ("Hard", 3), ("Good", 4), ("Easy", 5)]:
             btn = QPushButton(label)
-            # accept and ignore any args the signal may send (e.g. checked)
-            btn.clicked.connect(lambda *_, sc=score: self.grade_card(sc))
+            btn.clicked.connect(functools.partial(self.grade_card, score))
             grades_layout.addWidget(btn)
         right.addLayout(grades_layout)
+
+        nav_layout = QHBoxLayout()
+        prev_btn = QPushButton("Previous")
+        prev_btn.clicked.connect(self.prev_flashcard)
+        nav_layout.addWidget(prev_btn)
+        next_btn = QPushButton("Next")
+        next_btn.clicked.connect(self.next_flashcard)
+        nav_layout.addWidget(next_btn)
+        right.addLayout(nav_layout)
 
         refresh = QPushButton("Refresh Due List")
         refresh.clicked.connect(self.load_due_flashcards)
         right.addWidget(refresh)
 
+        self.flashcards_data = []
+        self.known_cards = []
+        self.known_card_ids = set()
+        self.current_card_index = -1
+        self.load_due_flashcards()
+
         self.tabs.addTab(w, "Flashcards")
 
     # Load and display due flashcards
     def load_due_flashcards(self):
-        self.fc_list.clear()
-        for r in due_flashcards():
+        self.flashcards_data = list(due_flashcards())
+        self.due_list.clear()
+        for r in self.flashcards_data:
             display = f"[{r['domain']}] {r['question'][:120]}"
-            # 'id' is always present from the questions table in the query result
-            self.fc_list.addItem(f"{r['id']}: {display}")
+            self.due_list.addItem(f"{r['id']}: {display}")
+        self.due_count_label.setText(f"Due cards: {len(self.flashcards_data)}")
+        self.update_known_list()
+        if self.flashcards_data:
+            self.show_flashcard(0)
+        else:
+            self.current_card_index = -1
+            self.card_status_label.setText("No due flashcards. Nice work!")
+            self.card_q.clear()
+            self.card_a.clear()
+            self.show_ans_btn.setEnabled(False)
 
     # Display selected flashcard
     def show_flashcard(self, idx):
-        if idx < 0:
+        if idx < 0 or idx >= len(self.flashcards_data):
             return
-        item = self.fc_list.item(idx).text()
-        qid = int(item.split(":", 1)[0])
-        conn = get_conn()
-        c = conn.cursor()
-        c.execute("SELECT * FROM questions WHERE id=?", (qid,))
-        r = c.fetchone()
-        conn.close()
-        if r:
-            self.current_card_id = r['id']
-            self.card_q.setPlainText(r['question'])
-            self.card_a.setPlainText(r['answer'] or "<no answer provided>")
-            self.card_a.hide()
+        if self.due_list.currentRow() != idx:
+            self.due_list.setCurrentRow(idx)
+        card = self.flashcards_data[idx]
+        self.current_card_index = idx
+        self.current_card_id = card['id']
+        self.card_status_label.setText(f"Card {idx + 1} of {len(self.flashcards_data)}")
+        self.card_q.setPlainText(card['question'])
+        self.card_a.setPlainText(card['answer'] or "<no answer provided>")
+        self.card_a.hide()
+        self.show_ans_btn.setEnabled(True)
+
+    def prev_flashcard(self):
+        if self.current_card_index > 0:
+            self.show_flashcard(self.current_card_index - 1)
+
+    def next_flashcard(self):
+        if self.current_card_index + 1 < len(self.flashcards_data):
+            self.show_flashcard(self.current_card_index + 1)
+
+    def update_known_list(self):
+        self.known_list.clear()
+        for r in self.known_cards:
+            display = f"[{r['domain']}] {r['question'][:80]}"
+            self.known_list.addItem(display)
+        self.known_count_label.setText(f"Known cards: {len(self.known_cards)}")
 
     # Grade the card and update SRS
     def grade_card(self, quality):
-        if not hasattr(self, "current_card_id"):
+        if not hasattr(self, "current_card_id") or self.current_card_index < 0:
             QMessageBox.warning(self, "No card", "Select a card first")
             return
         qid = self.current_card_id
         schedule_update(qid, quality)
         record_attempt(qid, quality >= 4)
+        if quality >= 4 and qid not in self.known_card_ids:
+            self.known_card_ids.add(qid)
+            self.known_cards.append(self.flashcards_data[self.current_card_index])
+        self.update_known_list()
         QMessageBox.information(self, "Saved", "Your answer and scheduling updated.")
         self.load_due_flashcards()
 
