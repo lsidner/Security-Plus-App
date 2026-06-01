@@ -594,3 +594,13 @@ def clear_quiz_history():
     c.execute("DELETE FROM quizzes")
     conn.commit()
     conn.close()
+
+
+def delete_all_questions():
+    """Delete all questions from the database."""
+    conn = get_conn()
+    c = conn.cursor()
+    c.execute("DELETE FROM flashcards")
+    c.execute("DELETE FROM questions")
+    conn.commit()
+    conn.close()
