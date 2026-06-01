@@ -20,7 +20,7 @@ from app_core import (
     list_domains, get_questions, record_attempt, stats_per_domain,
     schedule_update, due_flashcards, create_quiz, record_quiz_answer,
     update_quiz_score, get_quiz_history, get_quiz_details, clear_quiz_history,
-    assign_missing_domains, resolve_asset_path
+    assign_missing_domains, resolve_asset_path, delete_all_questions
 )
 
 # Optional: progress chart
@@ -894,6 +894,10 @@ class MainWindow(QMainWindow):
         assign_domains_btn.clicked.connect(self.add_domains_to_questions)
         layout.addWidget(assign_domains_btn)
 
+        delete_all_btn = QPushButton("Delete All Questions")
+        delete_all_btn.clicked.connect(self.delete_all_questions)
+        layout.addWidget(delete_all_btn)
+
         reset_btn = QPushButton("Reset Database (delete all)")
         reset_btn.clicked.connect(self.reset_db)
         layout.addWidget(reset_btn)
@@ -972,6 +976,24 @@ class MainWindow(QMainWindow):
             conn.commit()
             conn.close()
             QMessageBox.information(self, "Reset", "Database reset")
+            self.reload_domains()
+            self.load_stats()
+            self.load_quiz_history()
+            try:
+                self.load_due_flashcards()
+            except Exception:
+                pass
+
+    def delete_all_questions(self):
+        reply = QMessageBox.question(
+            self,
+            "Delete all questions?",
+            "This will delete all questions from the bank. Continue?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if reply == QMessageBox.Yes:
+            delete_all_questions()
+            QMessageBox.information(self, "Deleted", "All questions have been removed.")
             self.reload_domains()
             self.load_stats()
             self.load_quiz_history()
